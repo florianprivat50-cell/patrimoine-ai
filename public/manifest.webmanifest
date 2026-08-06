@@ -1,0 +1,13 @@
+{
+  "name": "Patrimoine IA",
+  "short_name": "Patrimoine IA",
+  "description": "Votre copilote patrimonial intelligent",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0d0d",
+  "theme_color": "#0d0d0d",
+  "lang": "fr",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

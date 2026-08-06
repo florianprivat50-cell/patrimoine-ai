@@ -1,0 +1,355 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --surface-1: #fffdf8;
+  --surface-tint: #0b7a55;
+  --page: #f3f0e6;
+  --text-primary: #10201a;
+  --text-secondary: #4c5b53;
+  --text-muted: #86928a;
+  --grid: #e5e2d8;
+  --baseline: #c6c3b8;
+  --border: rgba(16, 32, 26, 0.11);
+  --accent: #0b7a55;
+  --accent-strong: #0a5e42;
+  --accent-light: #2fa374;
+  --good: #0ca30c;
+  --good-text: #006300;
+  --warning: #d9a514;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  /* Panneau de décision (identique dans les deux thèmes — identité de marque) */
+  --panel-bg: #0c352a;
+  --panel-card: #11453660;
+  --panel-card-solid: #124436;
+  --panel-border: rgba(233, 245, 238, 0.12);
+  --panel-text: #eef7f1;
+  --panel-muted: #9dc4b1;
+  --panel-mint: #7ee2b0;
+  --panel-mint-strong: #3ecf8e;
+  --panel-orange: #e2603d;
+  --panel-amber: #d9a514;
+}
+
+.dark {
+  color-scheme: dark;
+  --surface-1: #161f1a;
+  --surface-tint: #3ecf8e;
+  --page: #0a0f0c;
+  --text-primary: #f2f7f3;
+  --text-secondary: #b9c6bd;
+  --text-muted: #85938a;
+  --grid: #263029;
+  --baseline: #35403a;
+  --border: rgba(242, 247, 243, 0.11);
+  --accent: #3ecf8e;
+  --accent-strong: #2fb87a;
+  --accent-light: #7ee2b0;
+  --good-text: #3ecf8e;
+}
+
+html,
+body {
+  background: var(--page);
+  color: var(--text-primary);
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Fond en dégradé maillé : plusieurs halos de couleur très doux + un grain fin —
+   remplace l'aplat uni pour donner de la profondeur, sans jamais gêner la lecture. */
+body {
+  background-color: var(--page);
+  background-image:
+    url("/grain.svg"),
+    radial-gradient(1200px 720px at 6% -8%, color-mix(in srgb, var(--accent) 14%, transparent) 0%, transparent 58%),
+    radial-gradient(900px 620px at 108% 10%, color-mix(in srgb, var(--accent-light) 12%, transparent) 0%, transparent 55%),
+    radial-gradient(1100px 780px at 45% 118%, color-mix(in srgb, var(--accent) 10%, transparent) 0%, transparent 60%);
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+}
+.dark body {
+  background-image:
+    url("/grain.svg"),
+    radial-gradient(1200px 720px at 6% -8%, color-mix(in srgb, var(--accent) 11%, transparent) 0%, transparent 58%),
+    radial-gradient(900px 620px at 108% 10%, color-mix(in srgb, var(--accent-light) 9%, transparent) 0%, transparent 55%),
+    radial-gradient(1100px 780px at 45% 118%, color-mix(in srgb, var(--accent) 8%, transparent) 0%, transparent 60%);
+}
+
+h1,
+.font-display {
+  letter-spacing: -0.01em;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes fadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes modalUp {
+    from {
+      opacity: 0;
+      transform: translateY(18px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  @keyframes pulseGlow {
+    0%, 100% {
+      box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 35%, transparent);
+    }
+    50% {
+      box-shadow: 0 0 0 6px color-mix(in srgb, currentColor 0%, transparent);
+    }
+  }
+  @keyframes meshDrift {
+    0%, 100% { background-position: 0 0, 0 0, 0 0, 0 0; }
+    50% { background-position: 0 0, 2% 1.5%, -2% -1%, 1% -2%; }
+  }
+  .animate-in {
+    animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-scale-in {
+    animation: scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-modal {
+    animation: modalUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-pulse-glow {
+    animation: pulseGlow 2.2s ease-in-out infinite;
+  }
+  body {
+    animation: meshDrift 26s ease-in-out infinite;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl p-4 sm:p-5 transition-shadow duration-300;
+    background:
+      linear-gradient(155deg, color-mix(in srgb, var(--surface-tint) 5%, transparent) 0%, transparent 45%),
+      var(--surface-1);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 2px rgba(16, 32, 26, 0.04), 0 8px 20px -12px rgba(16, 32, 26, 0.12);
+  }
+  .dark .card {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 10px 24px -12px rgba(0, 0, 0, 0.45);
+  }
+  .card-hover {
+    @apply transition duration-200 ease-out;
+  }
+  .card-hover:hover {
+    transform: translateY(-3px);
+    box-shadow:
+      0 14px 32px -14px color-mix(in srgb, var(--accent) 28%, transparent),
+      0 4px 10px -4px rgba(16, 32, 26, 0.12);
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  }
+  .dark .card-hover:hover {
+    box-shadow:
+      0 14px 32px -14px color-mix(in srgb, var(--accent) 22%, transparent),
+      0 6px 16px -6px rgba(0, 0, 0, 0.5);
+  }
+  .btn-primary {
+    @apply relative overflow-hidden rounded-xl px-4 py-2.5 font-semibold text-white transition active:scale-[0.98] disabled:opacity-50;
+    background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 115%, white 8%) 0%, var(--accent-strong) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      0 1px 2px rgba(16, 32, 26, 0.08),
+      0 8px 20px -8px color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+  .btn-primary::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.32) 46%, rgba(255, 255, 255, 0.32) 54%, transparent 70%);
+    transform: translateX(-120%);
+    transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+  }
+  .btn-primary:hover::after {
+    transform: translateX(120%);
+  }
+  .btn-primary:hover {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.26),
+      0 1px 2px rgba(16, 32, 26, 0.08),
+      0 10px 26px -8px color-mix(in srgb, var(--accent) 65%, transparent);
+    transform: translateY(-1px);
+  }
+  .dark .btn-primary {
+    color: #06281c;
+  }
+  .btn-ghost {
+    @apply rounded-xl px-4 py-2.5 font-medium transition active:scale-[0.98];
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+  }
+  .btn-ghost:hover {
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+    color: var(--text-primary);
+  }
+  .input {
+    @apply w-full rounded-xl px-3 py-2.5 text-[15px] outline-none transition;
+    background: var(--page);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+  }
+  .input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+  .label {
+    @apply mb-1 block text-[13px] font-medium;
+    color: var(--text-secondary);
+  }
+  .hint {
+    @apply mt-1 block text-xs;
+    color: var(--text-muted);
+  }
+  /* Panneau de décision « Analyser un bien » */
+  .deal-panel {
+    @apply relative overflow-hidden rounded-3xl p-4 sm:p-5;
+    background: linear-gradient(155deg, #0e3d30 0%, var(--panel-bg) 45%, #082a21 100%);
+    color: var(--panel-text);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    box-shadow: 0 24px 60px -24px rgba(4, 20, 15, 0.55);
+  }
+  .deal-card {
+    @apply relative rounded-2xl p-3.5 transition duration-200;
+    background: var(--panel-card);
+    border: 1px solid var(--panel-border);
+  }
+  .deal-card:hover {
+    border-color: color-mix(in srgb, var(--panel-mint) 40%, transparent);
+  }
+  .seg-btn {
+    @apply rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    background: var(--surface-1);
+  }
+  .seg-btn:hover {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  }
+  .seg-btn[data-active="true"] {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+  /* Carte héro avec halo décoratif (patrimoine net, etc.) */
+  .hero-card {
+    @apply relative overflow-hidden rounded-[26px] p-5 sm:p-6;
+    background: linear-gradient(150deg, color-mix(in srgb, var(--accent) 12%, var(--surface-1)) 0%, var(--surface-1) 55%);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 2px rgba(16, 32, 26, 0.05), 0 20px 44px -22px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+  .hero-glow {
+    @apply pointer-events-none absolute rounded-full;
+    background: radial-gradient(circle, color-mix(in srgb, var(--accent) 38%, transparent) 0%, transparent 70%);
+    filter: blur(32px);
+    width: 260px;
+    height: 260px;
+    top: -100px;
+    right: -70px;
+  }
+  .hero-glow-soft {
+    @apply pointer-events-none absolute rounded-full;
+    background: radial-gradient(circle, color-mix(in srgb, var(--accent-light) 26%, transparent) 0%, transparent 70%);
+    filter: blur(36px);
+    width: 220px;
+    height: 220px;
+    bottom: -90px;
+    left: -60px;
+  }
+  /* Chiffre héro en dégradé — mono-hue (encre → vert de marque), jamais une seconde teinte */
+  .figure-gradient {
+    background: linear-gradient(120deg, var(--text-primary) 0%, var(--accent) 65%, var(--accent-light) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* Barre latérale : verre dépoli sur le fond texturé */
+  .sidebar-glass {
+    background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+  }
+}
+
+@layer utilities {
+  .delay-1 { animation-delay: 60ms; }
+  .delay-2 { animation-delay: 120ms; }
+  .delay-3 { animation-delay: 180ms; }
+  .delay-4 { animation-delay: 240ms; }
+  .delay-5 { animation-delay: 300ms; }
+  .delay-6 { animation-delay: 360ms; }
+  .delay-7 { animation-delay: 420ms; }
+  .delay-8 { animation-delay: 480ms; }
+}
+
+/* Recharts : textes en encre, jamais en couleur de série */
+.recharts-text {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+.recharts-cartesian-grid line {
+  stroke: var(--grid);
+}
+.recharts-tooltip-wrapper {
+  outline: none;
+}
+
+/* Carte Leaflet */
+.leaflet-container {
+  border-radius: 1rem;
+  z-index: 0;
+}
+
+/* Rapport PDF : n'imprimer que le panneau d'analyse */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #rapport,
+  #rapport * {
+    visibility: visible;
+  }
+  #rapport {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    border-radius: 0;
+  }
+  nav,
+  aside {
+    display: none !important;
+  }
+}
