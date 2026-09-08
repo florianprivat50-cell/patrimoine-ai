@@ -1,6 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
-import { useStore } from "./store";
 import Onboarding from "./pages/Onboarding";
 import Investir from "./pages/Investir";
 import Dashboard from "./pages/Dashboard";
@@ -12,13 +11,11 @@ import Analyse from "./pages/Analyse";
 import Profil from "./pages/Profil";
 
 export default function App() {
-  const onboarded = useStore((s) => s.onboarded);
-  if (!onboarded) return <Onboarding />;
-
   return (
     <Layout>
       <Routes>
         <Route path="/" element={<Investir />} />
+        <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/patrimoine" element={<Patrimoine />} />
         <Route path="/projets" element={<Projets />} />
