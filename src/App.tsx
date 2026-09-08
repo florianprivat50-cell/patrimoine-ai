@@ -5,26 +5,9 @@ import Investir from "./pages/Investir";
 import Dashboard from "./pages/Dashboard";
 import Patrimoine from "./pages/Patrimoine";
 import Projets from "./pages/Projets";
+import Opportunites from "./pages/Opportunites";
 import Carte from "./pages/Carte";
 import Objectifs from "./pages/Objectifs";
 import Analyse from "./pages/Analyse";
 import Profil from "./pages/Profil";
-
-export default function App() {
-  return (
-    <Layout>
-      <Routes>
-        <Route path="/" element={<Investir />} />
-        <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/patrimoine" element={<Patrimoine />} />
-        <Route path="/projets" element={<Projets />} />
-        <Route path="/carte" element={<Carte />} />
-        <Route path="/objectifs" element={<Objectifs />} />
-        <Route path="/analyse" element={<Analyse />} />
-        <Route path="/profil" element={<Profil />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Layout>
-  );
-}
+export default function App(){return <Layout><Routes><Route path="/" element={<Investir/>}/><Route path="/onboarding" element={<Onboarding/>}/><Route path="/dashboard" element={<Dashboard/>}/><Route path="/patrimoine" element={<Patrimoine/>}/><Route path="/projets" element={<Opportunites/>}/><Route path="/projets/expert" element={<Projets/>}/><Route path="/carte" element={<Carte/>}/><Route path="/objectifs" element={<Objectifs/>}/><Route path="/analyse" element={<Analyse/>}/><Route path="/profil" element={<Profil/>}/><Route path="*" element={<Navigate to="/" replace/>}/></Routes></Layout>}
