@@ -1,7 +1,8 @@
 import { FormEvent, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { computeDeal, effectiveProjectInputs } from "../lib/deal";
-import { computeFeasibilityScore } from "../lib/feasibility";
+import { projectFeasibility, targetPriceForScore } from '../lib/projectAnalysis';
+import { AnalysisEvidence, FieldEvidence, invalidateEvidence } from '../lib/evidence';
 import { fmtEUR, fmtPct } from "../lib/finance";
 import { compareToMarket } from "../lib/market";
 import { useStore, uid } from "../store";
@@ -21,7 +22,12 @@ interface ListingResponse {
   lat?: number;
   lng?: number;
   confidence?: "high" | "medium" | "low";
-  extracted?: string[];
+  extracted?: FieldEvidence[];
+  evidence?: AnalysisEvidence;
+  monthlyRent?: number;
+  propertyTaxYearly?: number;
+  yearlyCharges?: number;
+  residentialLots?: number;
   warnings?: string[];
   error?: string;
 }
@@ -36,14 +42,14 @@ function initialProject(): RealEstateProject {
     address: "",
     listingUrl: "",
     propertyType: "Immeuble",
-    surface: 140,
+    surface: 0,
     residentialLots: 3,
     commercialLots: 0,
     commercialMonthlyRent: 0,
     analysisMode: "approfondie",
     rentalMode: "classique",
     targetNetYieldPct: 7,
-    price: 200000,
+    price: 0,
     agencyFees: 0,
     notaryFeesPct: 8,
     works: 20000,
@@ -53,9 +59,9 @@ function initialProject(): RealEstateProject {
     ratePct: 3.5,
     durationYears: 25,
     insurancePctYearly: 0.3,
-    monthlyRent: 1800,
+    monthlyRent: 0,
     monthlyCharges: 180,
-    propertyTaxYearly: 1800,
+    propertyTaxYearly: 0,
     ownerInsuranceYearly: 450,
     managementPct: 0,
     maintenancePct: 5,
@@ -71,13 +77,16 @@ const tensionToScore = (tension: string | null | undefined) =>
 
 export default function Investir() {
   const { projects, addProject, updateProject } = useStore();
-  const [p, setP] = useState<RealEstateProject>(initialProject);
+  const [params] = useSearchParams();
+  const [p, setP] = useState<RealEstateProject>(()=>projects.find(x=>x.id===params.get('id')) ?? initialProject());
+  const [targetScore,setTargetScore]=useState(80);
+  const [targetResult,setTargetResult]=useState<ReturnType<typeof targetPriceForScore>|null>(null);
   const [url, setUrl] = useState("");
   const [listing, setListing] = useState<ListingResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const patch = (x: Partial<RealEstateProject>) => setP((prev) => ({ ...prev, ...x }));
+  const patch = (x: Partial<RealEstateProject>) => {setSaved(false);setTargetResult(null);setP(prev=>({...prev,...x,evidence:invalidateEvidence(prev.evidence,x)}));};
   const effective = useMemo(() => effectiveProjectInputs(p), [p]);
   const deal = useMemo(() => computeDeal(effective), [effective]);
   const realistic = deal.results.realiste;
@@ -89,42 +98,8 @@ export default function Investir() {
     [p.city, p.postalCode, subjectPricePerSqm]
   );
 
-  const feasibility = useMemo(() => computeFeasibilityScore({
-    askingPrice: p.price,
-    totalCost: realistic.totalCost,
-    subjectMonthlyRent: realistic.grossMonthlyRent,
-    targetNetYieldPct: p.targetNetYieldPct,
-    breakEvenRent: realistic.breakEvenRent,
-    realistic: {
-      monthlyCashflow: realistic.monthlyCashflow,
-      monthlyDebtService: realistic.monthlyLoanPayment,
-      yearlyNetOperatingIncome: realistic.yearlyNetIncome,
-      netAfterTaxYieldPct: realistic.netAfterTaxYieldPct,
-    },
-    prudent: {
-      monthlyCashflow: prudent.monthlyCashflow,
-      monthlyDebtService: prudent.monthlyLoanPayment,
-      yearlyNetOperatingIncome: prudent.yearlyNetIncome,
-      netAfterTaxYieldPct: prudent.netAfterTaxYieldPct,
-    },
-    optimistic: {
-      monthlyCashflow: optimistic.monthlyCashflow,
-      monthlyDebtService: optimistic.monthlyLoanPayment,
-      yearlyNetOperatingIncome: optimistic.yearlyNetIncome,
-      netAfterTaxYieldPct: optimistic.netAfterTaxYieldPct,
-    },
-    market: localMarket ? {
-      locationLabel: localMarket.place,
-      medianSalePricePerSqm: localMarket.refPricePerSqm,
-      subjectPricePerSqm: localMarket.yourPricePerSqm,
-      rentalDemandScore: tensionToScore(localMarket.tension),
-      resaleLiquidityScore: Math.max(25, tensionToScore(localMarket.tension) - 5),
-      dataConfidence: "low",
-    } : undefined,
-    propertyRisk: listing?.dpe ? { dpe: listing.dpe, dataConfidence: "low" } : undefined,
-    listingConfidence: listing?.ok ? (listing.confidence ?? "medium") : "unknown",
-    locationConfidence: p.lat != null && p.lng != null ? "medium" : p.city ? "low" : "unknown",
-  }), [p, realistic, prudent, optimistic, localMarket, listing]);
+  const feasibility = useMemo(()=>projectFeasibility(effective,deal.results),[effective,deal]);
+  const valid=p.price>0 && p.monthlyRent>0 && p.durationYears>0 && (p.surface??0)>0;
 
   async function analyzeUrl(e: FormEvent) {
     e.preventDefault();
@@ -132,25 +107,24 @@ export default function Investir() {
     if (!clean) return;
     setLoading(true);
     setListing(null);
+    setSaved(false);setTargetResult(null);
+    const fresh={...initialProject(),propertyType:p.propertyType,listingUrl:clean};
+    setP(fresh);
     try {
       const res = await fetch("/.netlify/functions/analyze-listing", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url: clean }),
+        body: JSON.stringify({ url: clean, propertyType: p.propertyType }),
       });
       const data = (await res.json()) as ListingResponse;
       setListing(data);
       if (data.ok) {
-        patch({
-          listingUrl: clean,
-          name: data.title?.slice(0, 70) || p.name,
-          price: data.price || p.price,
-          surface: data.surface || p.surface,
-          city: data.city || p.city,
-          postalCode: data.postalCode || p.postalCode,
-          address: data.address || p.address,
-          lat: data.lat ?? p.lat,
-          lng: data.lng ?? p.lng,
+        setP({...fresh,
+          name:data.title?.slice(0,70)||'Annonce à compléter',
+          price:data.price??0,surface:data.surface??0,monthlyRent:data.monthlyRent??0,
+          propertyTaxYearly:data.propertyTaxYearly??0,monthlyCharges:data.yearlyCharges!=null?data.yearlyCharges/12:fresh.monthlyCharges,
+          residentialLots:data.residentialLots??fresh.residentialLots,
+          city:data.city??'',postalCode:data.postalCode??'',address:data.address??'',lat:data.lat,lng:data.lng,evidence:data.evidence,
         });
       }
     } catch {
@@ -160,7 +134,17 @@ export default function Investir() {
     }
   }
 
+  async function refreshLocal(){
+    setLoading(true);setTargetResult(null);
+    try{
+      const res=await fetch('/.netlify/functions/analyze-listing',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode:'local',manual:{city:p.city,postalCode:p.postalCode,address:p.address,surface:p.surface,price:p.price,propertyType:p.propertyType}})});
+      const data=await res.json() as ListingResponse;
+      if(data.evidence){const evidence={...data.evidence,fields:p.evidence?.fields??[],risks:p.evidence?.risks??data.evidence.risks};setP(prev=>({...prev,evidence,lat:data.lat,lng:data.lng}));}
+      setListing(data);setSaved(false);
+    }catch{setListing({ok:false,error:'Collecte locale indisponible. Réessayez.'});}finally{setLoading(false);}
+  }
   function saveProject() {
+    if(!valid)return;
     const exists = projects.some((x) => x.id === p.id);
     exists ? updateProject(p) : addProject(p);
     setSaved(true);
@@ -184,11 +168,14 @@ export default function Investir() {
             onChange={(e) => setUrl(e.target.value)}
             placeholder="Collez une annonce Leboncoin, SeLoger, Bien’ici ou une agence…"
             inputMode="url"
+            aria-label="URL de l’annonce"
+            disabled={loading}
           />
-          <button type="submit" disabled={loading || !url.trim()}>
+          <button type="submit" aria-label="Analyser l’annonce" disabled={loading || !url.trim()}>
             {loading ? "Analyse…" : "Analyser l’annonce"}
           </button>
         </form>
+        <label className="property-kind">Type à comparer aux ventes DVF <select aria-label="Type de bien" value={p.propertyType} disabled={loading} onChange={e=>patch({propertyType:e.target.value,evidence:undefined})}>{['Immeuble','Appartement','Maison'].map(t=><option key={t}>{t}</option>)}</select></label>
         <div className="trust-row">
           <span>Extraction de l’annonce</span><span>Marché local</span><span>Stress-test</span><span>Score /100</span>
         </div>
@@ -205,26 +192,32 @@ export default function Investir() {
         <div className="deal-editor">
           <div className="section-heading">
             <div><span className="eyebrow">Données du deal</span><h2>Les chiffres qui pilotent la décision</h2></div>
-            <Link to="/projets" className="text-link">Mode expert →</Link>
+            <Link to="/projets/expert" className="text-link">Mode expert →</Link>
           </div>
 
-          <div className="quick-grid">
-            <label><span>Prix d’achat</span><input type="number" value={p.price} onChange={(e) => patch({ price: +e.target.value })}/><b>€</b></label>
+          <p className="analysis-note">Prix, surface et loyers à renseigner avant décision. Les autres montants sont des hypothèses modifiables, pas des données vérifiées.</p>
+          <fieldset disabled={loading} className="quick-grid">
+            <label><span>Prix d’achat</span><input type="number" min="0" value={p.price} onChange={(e) => patch({ price: +e.target.value })}/><b>€</b></label>
             <label><span>Surface</span><input type="number" value={p.surface ?? 0} onChange={(e) => patch({ surface: +e.target.value })}/><b>m²</b></label>
             <label><span>Loyers / mois</span><input type="number" value={p.monthlyRent} onChange={(e) => patch({ monthlyRent: +e.target.value })}/><b>€</b></label>
             <label><span>Travaux</span><input type="number" value={p.works} onChange={(e) => patch({ works: +e.target.value })}/><b>€</b></label>
             <label><span>Apport</span><input type="number" value={p.downPayment} onChange={(e) => patch({ downPayment: +e.target.value })}/><b>€</b></label>
             <label><span>Taux</span><input type="number" step="0.05" value={p.ratePct} onChange={(e) => patch({ ratePct: +e.target.value })}/><b>%</b></label>
-            <label><span>Durée</span><input type="number" value={p.durationYears} onChange={(e) => patch({ durationYears: +e.target.value })}/><b>ans</b></label>
+            <label><span>Durée</span><input type="number" min="1" value={p.durationYears} onChange={(e) => patch({ durationYears: +e.target.value })}/><b>ans</b></label>
             <label><span>Taxe foncière</span><input type="number" value={p.propertyTaxYearly} onChange={(e) => patch({ propertyTaxYearly: +e.target.value })}/><b>€/an</b></label>
-          </div>
+            <label><span>Charges propriétaire / mois</span><input type="number" min="0" value={p.monthlyCharges} onChange={e=>patch({monthlyCharges:+e.target.value})}/><b>€</b></label>
+            <label><span>Vacance (hypothèse)</span><input type="number" min="0" max="99" value={p.vacancyPct} onChange={e=>patch({vacancyPct:+e.target.value})}/><b>%</b></label>
+            <label><span>Fiscalité simplifiée</span><input type="number" min="0" max="99" value={p.taxRatePct} onChange={e=>patch({taxRatePct:+e.target.value})}/><b>%</b></label>
+            <label><span>Nom du dossier</span><input value={p.name} onChange={e=>patch({name:e.target.value})}/></label>
+          </fieldset>
 
           <div className="location-strip">
             <input value={p.city ?? ""} onChange={(e) => patch({ city: e.target.value })} placeholder="Ville" />
             <input value={p.postalCode ?? ""} onChange={(e) => patch({ postalCode: e.target.value })} placeholder="Code postal" />
-            <span>{localMarket ? `Référence locale : ${fmtEUR(localMarket.refPricePerSqm)}/m² · tension ${localMarket.tension ?? "à vérifier"}` : "Localisation à renseigner pour comparer le marché"}</span>
+            <span>{localMarket ? `Repère indicatif non vérifié : ${fmtEUR(localMarket.refPricePerSqm)}/m² · tension ${localMarket.tension ?? "à vérifier"}` : "Localisation à renseigner pour comparer le marché"}</span>
           </div>
 
+          <button className="save-deal" disabled={loading||(!p.city&&!p.postalCode&&!p.address)} onClick={refreshLocal}>Actualiser le marché et les risques</button>
           <div className="scenario-row">
             {([
               ["Prudent", prudent],
@@ -243,9 +236,9 @@ export default function Investir() {
         <aside className={`feasibility-card ${scoreTone}`}>
           <div className="score-topline"><span>Faisabilité du projet</span><em>Grade {feasibility.grade}</em></div>
           <div className="score-ring" style={{ "--score": `${feasibility.score * 3.6}deg` } as React.CSSProperties}>
-            <div><strong>{feasibility.score}</strong><span>/100</span></div>
+            <div><strong>{valid?feasibility.score:"—"}</strong><span>/100</span></div>
           </div>
-          <h2>{feasibility.verdict}</h2>
+          <h2>{valid?feasibility.verdict:"À compléter"}</h2>
           <p className="score-summary">
             {feasibility.score >= 70
               ? "Le dossier présente des fondamentaux intéressants, sous réserve de confirmer les données locales et techniques."
@@ -269,13 +262,28 @@ export default function Investir() {
           </div>
 
           {feasibility.hardCaps.length > 0 && (
-            <div className="score-alert"><strong>Plafond de sécurité</strong><span>{feasibility.hardCaps[0]}</span></div>
+            <div className="score-alert"><strong>Plafond de sécurité</strong><span>{feasibility.hardCaps.join(" ")}</span></div>
           )}
 
-          <button className="save-deal" onClick={saveProject}>{saved ? "✓ Opportunité enregistrée" : "Enregistrer cette opportunité"}</button>
+          <button className="save-deal" disabled={!valid||loading} onClick={saveProject}>{saved ? "✓ Opportunité enregistrée" : "Enregistrer cette opportunité"}</button>
         </aside>
       </section>
 
+      <section className="evidence-panel">
+        <h2>Prix cible et preuves du dossier</h2>
+        <div className="target-controls"><label>Score visé <input aria-label="Score visé" type="number" min="1" max="100" value={targetScore} onChange={e=>{setTargetScore(+e.target.value);setTargetResult(null);}}/></label><button className="save-deal" disabled={!valid} onClick={()=>setTargetResult(targetPriceForScore(effective,targetScore))}>Calculer le prix cible</button></div>
+        {targetResult&&<p role="status">{targetResult.price!=null?fmtEUR(targetResult.price):'Objectif inaccessible par le prix seul'} · {targetResult.reason}</p>}
+        <p className="analysis-note">Scénario prudent : loyers −5 %, vacance +5 points, travaux +15 %. Fiscalité simplifiée sur le revenu net ; à adapter au régime réel. DSCR réaliste : {Number.isFinite(feasibility.dscrRealistic)?feasibility.dscrRealistic.toFixed(2):'—'}.</p>
+        {p.evidence?<>
+          <p>Collecte du {new Date(p.evidence.retrievedAt).toLocaleDateString('fr-FR')} · {p.evidence.location?.label??'Localisation non confirmée'}</p>
+          {p.evidence.sources.map((source,i)=><article className="evidence-source" key={i}><a href={source.url} target="_blank" rel="noreferrer">{source.name} ↗</a><b>{source.status==='available'?'Source reçue':source.status==='insufficient'?'À préciser':'Indisponible'}</b><p>{source.detail}</p></article>)}
+          {p.evidence.market.medianSalePricePerSqm&&<p>Médiane des ventes comparables : {fmtEUR(p.evidence.market.medianSalePricePerSqm)}/m² · {p.evidence.market.comparableSaleCount} ventes.</p>}
+          {!!p.evidence.comparables?.length&&<details><summary>Ventes retenues (jusqu’à 50)</summary>{p.evidence.comparables.map(c=><p key={c.id}>{c.date} · {c.surface} m² · {fmtEUR(c.price)} · {fmtEUR(c.pricePerSqm)}/m² · mutation {c.id}</p>)}</details>}
+          <p>Risques communaux : {p.evidence.riskLabels.join(', ')||'Non déterminés'}. Ce relevé ne remplace pas l’état des risques de la parcelle.</p>
+          <details><summary>Données extraites et contradictions</summary>{p.evidence.fields.map((f,i)=><p key={i}><b>{f.field}</b> : {f.alternatives?.join(' / ')??f.value} · {f.status==='conflict'?'Contradiction à résoudre':f.status==='manual'?'Saisie manuelle':'Déclaration vendeur'} · {f.source}</p>)}</details>
+          <ul>{p.evidence.warnings.map((w,i)=><li key={i}>{w}</li>)}</ul>
+        </>:<p>Aucune preuve collectée. Les calculs reposent sur vos saisies et hypothèses.</p>}
+      </section>
       <section className="proof-grid">
         <article><span>01</span><h3>Annonce</h3><p>Extraction automatique des informations accessibles. Une donnée absente reste inconnue : elle n’est jamais inventée.</p></article>
         <article><span>02</span><h3>Localisation</h3><p>Adresse géocodée, prix/m² confronté au marché et profondeur des comparables intégrée à la note.</p></article>

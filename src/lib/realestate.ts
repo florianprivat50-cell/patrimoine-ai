@@ -107,10 +107,10 @@ export function computeProject(p: RealEstateProjectInputs): ProjectResults {
   // cash-flow = loyer_eff×12 × (1 − gestion − entretien − impôt simplifié) − coûts fixes − crédit
   const fixedYear = p.monthlyCharges * 12 + p.propertyTaxYearly + p.ownerInsuranceYearly;
   const share = 1 - (p.managementPct + p.maintenancePct) / 100;
-  // approximation sans impôt (affichée comme telle)
+  // Même fiscalité simplifiée que le cash-flow : impôt sur le revenu net positif.
   const breakEvenRent =
     share > 0
-      ? (fixedYear + monthlyLoanPayment * 12) / 12 / share / (1 - p.vacancyPct / 100)
+      ? (fixedYear + monthlyLoanPayment * 12 / Math.max(0.01, 1 - p.taxRatePct / 100)) / 12 / share / Math.max(0.01, 1 - p.vacancyPct / 100)
       : 0;
 
   // Prix max pour cash-flow ≥ 0 (recherche dichotomique sur le prix)

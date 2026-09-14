@@ -1,3 +1,4 @@
+import { answerDealQuestion } from '../lib/dealAdvisor';
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   PolarAngleAxis,
@@ -26,8 +27,9 @@ const SHORT_LABEL: Record<string, string> = {
 };
 
 export default function Analyse() {
-  const { profile, assets, liabilities, chat, pushChat, clearChat } = useStore();
+  const { profile, assets, liabilities, projects, chat, pushChat, clearChat } = useStore();
   const [input, setInput] = useState("");
+  const [selectedId,setSelectedId]=useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const m = useMemo(() => computeMetrics(assets, liabilities, profile), [assets, liabilities, profile]);
@@ -37,7 +39,7 @@ export default function Analyse() {
     const q = question.trim();
     if (!q) return;
     pushChat({ id: uid(), role: "user", content: q, at: new Date().toISOString() });
-    const a = answerQuestion(q, profile, assets, liabilities);
+    const a = answerDealQuestion(q, projects, selectedId) ?? answerQuestion(q, profile, assets, liabilities);
     pushChat({ id: uid(), role: "assistant", content: JSON.stringify(a), at: new Date().toISOString() });
     setInput("");
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
@@ -64,6 +66,81 @@ export default function Analyse() {
         subtitle="Score de santé et conseiller — moteur de règles transparent basé sur vos données"
       />
 
+      {/* Conseiller */}
+      <Card className="animate-in delay-2">
+        <SectionTitle
+          right={
+            chat.length > 0 ? (
+              <button className="text-xs" style={{ color: "var(--text-muted)" }} onClick={clearChat}>
+                Effacer
+              </button>
+            ) : undefined
+          }
+        >
+          Assistant immobilier
+        </SectionTitle>
+
+        <div className="space-y-3">
+          {chat.length === 0 && (
+            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              Comparez vos opportunités ou calculez un prix cible. Les réponses s'appuient uniquement sur les
+              données saisies, avec conclusions, hypothèses, risques et contre-arguments.
+            </p>
+          )}
+
+          {chat.map((msg) =>
+            msg.role === "user" ? (
+              <div key={msg.id} className="animate-in flex justify-end">
+                <div
+                  className="max-w-[85%] rounded-2xl rounded-br-md px-4 py-2.5 text-sm text-white"
+                  style={{ background: "var(--accent)", color: "#17120c" }}
+                >
+                  {msg.content}
+                </div>
+              </div>
+            ) : (
+              <AssistantBubble key={msg.id} raw={msg.content} />
+            )
+          )}
+          <div ref={bottomRef} />
+
+          <label className="block text-sm">Dossier pour les simulations<select className="input assistant-selection" aria-label="Dossier pour les simulations" value={selectedId} onChange={e=>setSelectedId(e.target.value)}><option value="">Choisir un dossier</option>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+          <div className="flex flex-wrap gap-1.5">
+            {["Compare mes opportunités", "Quel prix pour atteindre 80/100 ?", "Simule 30 000 € de travaux", ...SUGGESTED_QUESTIONS.slice(0,2)].map((q) => (
+              <button
+                key={q}
+                className="rounded-full px-3 py-1.5 text-xs transition hover:brightness-95"
+                style={{ border: "1px solid var(--border)", color: "var(--text-secondary)", background: "var(--page)" }}
+                onClick={() => ask(q)}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+
+          <form
+            className="flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              ask(input);
+            }}
+          >
+            <input
+              className="input flex-1"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Votre question…"
+            />
+            <button type="submit" className="btn-primary shrink-0">
+              Envoyer
+            </button>
+          </form>
+
+          <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+            Assistant à calculs déterministes, sans IA générative. Il utilise vos dossiers enregistrés et leurs preuves datées. Éclairage pédagogique, pas un conseil en investissement personnalisé.
+          </p>
+        </div>
+      </Card>
       {/* Score de santé */}
       <Card className="animate-in">
         <SectionTitle>Score de santé patrimoniale</SectionTitle>
@@ -178,81 +255,7 @@ export default function Analyse() {
         </p>
       </Card>
 
-      {/* Conseiller */}
-      <Card className="animate-in delay-2">
-        <SectionTitle
-          right={
-            chat.length > 0 ? (
-              <button className="text-xs" style={{ color: "var(--text-muted)" }} onClick={clearChat}>
-                Effacer
-              </button>
-            ) : undefined
-          }
-        >
-          Conseiller patrimonial
-        </SectionTitle>
 
-        <div className="space-y-3">
-          {chat.length === 0 && (
-            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-              Posez une question sur votre situation. Les réponses s'appuient uniquement sur les
-              données saisies, avec conclusions, hypothèses, risques et contre-arguments.
-            </p>
-          )}
-
-          {chat.map((msg) =>
-            msg.role === "user" ? (
-              <div key={msg.id} className="animate-in flex justify-end">
-                <div
-                  className="max-w-[85%] rounded-2xl rounded-br-md px-4 py-2.5 text-sm text-white"
-                  style={{ background: "var(--accent)" }}
-                >
-                  {msg.content}
-                </div>
-              </div>
-            ) : (
-              <AssistantBubble key={msg.id} raw={msg.content} />
-            )
-          )}
-          <div ref={bottomRef} />
-
-          <div className="flex flex-wrap gap-1.5">
-            {SUGGESTED_QUESTIONS.map((q) => (
-              <button
-                key={q}
-                className="rounded-full px-3 py-1.5 text-xs transition hover:brightness-95"
-                style={{ border: "1px solid var(--border)", color: "var(--text-secondary)", background: "var(--page)" }}
-                onClick={() => ask(q)}
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-
-          <form
-            className="flex gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              ask(input);
-            }}
-          >
-            <input
-              className="input flex-1"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Votre question…"
-            />
-            <button type="submit" className="btn-primary shrink-0">
-              Envoyer
-            </button>
-          </form>
-
-          <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
-            Conseiller de démonstration : moteur de règles local, sans IA générative ni donnée
-            externe. Éclairage pédagogique, pas un conseil en investissement personnalisé.
-          </p>
-        </div>
-      </Card>
     </div>
   );
 }
@@ -295,7 +298,7 @@ function AssistantBubble({ raw }: { raw: string }) {
           {a.conclusion}
         </p>
       </div>
-      <Section title="Données utilisées (faits)" items={a.data} />
+      <Section title="Données du dossier (à vérifier)" items={a.data} />
       <Section title="Hypothèses retenues" items={a.hypotheses} />
       <Section title="Risques" items={a.risks} tone="var(--critical)" />
       <Section title="Scénarios alternatifs" items={a.alternatives} />

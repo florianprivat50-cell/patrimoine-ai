@@ -139,6 +139,7 @@ export interface Goal {
 }
 
 export interface RealEstateProjectInputs {
+  evidence?: import('./lib/evidence').AnalysisEvidence;
   name: string;
   // Contexte du bien
   city?: string;

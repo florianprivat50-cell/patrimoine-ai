@@ -212,6 +212,14 @@ export function computeFeasibilityScore(input: FeasibilityInputs): FeasibilityRe
     score = Math.min(score, 58);
     hardCaps.push("DSCR prudent inférieur à 0,85 : résistance au stress insuffisante.");
   }
+  if (!market.medianSalePricePerSqm || (market.comparableSaleCount ?? 0) < 5 || !market.estimatedMarketRentMonthly || (market.comparableRentCount ?? 0) < 3) {
+    score = Math.min(score, 68);
+    hardCaps.push("Comparables de vente ou de loyer insuffisants : note plafonnée à 68.");
+  }
+  if (risks.geoRiskScore === undefined || risks.majorWorksRiskScore === undefined || risks.coproRiskScore === undefined) {
+    score = Math.min(score, 78);
+    hardCaps.push("Risques de la parcelle, travaux ou copropriété non vérifiés : note plafonnée à 78.");
+  }
   if (evidence < 45) {
     score = Math.min(score, 68);
     hardCaps.push("Données insuffisamment vérifiées : note plafonnée à 68 tant que les preuves manquent.");
