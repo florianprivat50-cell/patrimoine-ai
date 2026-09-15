@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+import { downloadAccount, useAccount } from '../lib/account';
 import { useState } from "react";
 import { Card, Field, NumberInput, PageHeader, SectionTitle } from "../components/ui";
 import { IconDownload, IconSparkles } from "../components/icons";
@@ -17,6 +19,7 @@ function applyTheme(t: Theme) {
 }
 
 export default function Profil() {
+  const account=useAccount();
   const { profile, updateProfile, demoMode, enterDemo, exitDemo, resetAll } = useStore();
   const [theme, setTheme] = useState<Theme>(
     (localStorage.getItem("pia-theme") as Theme | null) ?? "system"
@@ -150,11 +153,11 @@ export default function Profil() {
         <SectionTitle>Données</SectionTitle>
         <div className="space-y-3">
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            Vos données sont stockées <strong>uniquement sur cet appareil</strong> (stockage local du
-            navigateur). Aucune donnée n'est envoyée sur un serveur.
+            {account.user ? "Vos données sont sauvegardées dans votre compte personnel. Vérifiez l’état de synchronisation avant de changer d’appareil." : "Vous utilisez le mode local. Connectez-vous pour sauvegarder vos données sur votre compte et les retrouver sur vos autres appareils."}
+            <Link to="/compte" className="btn-ghost">{account.user?"Gérer mon compte":"Me connecter / Créer un compte"}</Link>
           </p>
           <div className="flex flex-wrap gap-2">
-            <button className="btn-ghost flex items-center gap-1.5" onClick={exportData}>
+            <button className="btn-ghost flex items-center gap-1.5" onClick={()=>downloadAccount()}>
               <IconDownload size={15} /> Exporter mes données (JSON)
             </button>
             {demoMode ? (
@@ -172,7 +175,7 @@ export default function Profil() {
               onClick={() => {
                 if (
                   confirm(
-                    "Supprimer définitivement toutes vos données locales (profil, actifs, crédits, objectifs, projets) ? Cette action est irréversible."
+                    "Supprimer toutes les données de cet espace (profil, actifs, crédits, objectifs, analyses, échanges) ? Si vous êtes connecté, cette suppression sera synchronisée dans votre compte. Exportez vos données avant de continuer."
                   )
                 )
                   resetAll();

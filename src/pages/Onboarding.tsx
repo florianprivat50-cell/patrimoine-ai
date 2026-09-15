@@ -307,8 +307,7 @@ export default function Onboarding() {
 
       <p className="mt-6 text-center text-[10px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
         Patrimoine IA fournit des outils d'aide à la décision et ne remplace pas un conseiller
-        financier, fiscal, juridique ou immobilier. Vos données restent stockées localement sur cet
-        appareil.
+        financier, fiscal, juridique ou immobilier. Connectez-vous pour sauvegarder vos données dans votre compte personnel.
       </p>
     </div>
   );

@@ -5,3 +5,6 @@ dist
 *.local
 *.tsbuildinfo
 tests/artifacts/
+
+.npm-cache/
+.netlify/

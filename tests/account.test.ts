@@ -1,0 +1,21 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { accountHandler, type AccountRepository } from '../netlify/functions/_shared/account';
+import { emptyAccount } from '../src/lib/accountData';
+
+function setup(){
+ const records=new Map<string,any>();let version=0;
+ const store:AccountRepository={
+  async getWithMetadata(key){return records.get(key)??null;},
+  async setJSON(key,data,options){const old=records.get(key);if(('onlyIfNew'in options&&old)||('onlyIfMatch'in options&&options.onlyIfMatch!==old?.etag))return {modified:false};const etag=`revision-${++version}`;records.set(key,{data,etag});return {modified:true,etag};}
+ };
+ return {records,run:(id:string|null)=>accountHandler(async()=>id?{id}:null,()=>store)};
+}
+function put(data:any,revision:string|null=null,origin='https://app.example'){return new Request('https://app.example/.netlify/functions/account',{method:'PUT',headers:{origin,'content-type':'application/json'},body:JSON.stringify({data,revision})});}
+const get=()=>new Request('https://app.example/.netlify/functions/account');
+test('unauthenticated requests never reach storage',async()=>{const s=setup();assert.equal((await s.run(null)(get())).status,401);assert.equal((await s.run(null)(put(emptyAccount()))).status,401);assert.equal(s.records.size,0);});
+test('account ownership comes only from verified session and responses cannot be cached',async()=>{const s=setup();const a=emptyAccount();a.profile={firstName:'Alice'} as any;const saved=await s.run('alice')(put(a));assert.equal(saved.status,200);const response=await s.run('bob')(new Request('https://app.example/.netlify/functions/account?userId=alice'));assert.equal((await response.json()).data.profile,null);assert.match(response.headers.get('cache-control')!,/no-store/);assert.equal((await (await s.run('alice')(get())).json()).data.profile.firstName,'Alice');});
+test('atomic writes reject stale and simultaneous creates without erasing data',async()=>{const s=setup();const results=await Promise.all([s.run('alice')(put(emptyAccount())),s.run('alice')(put(emptyAccount()))]);assert.deepEqual(results.map(r=>r.status).sort(),[200,409]);const current=await (await s.run('alice')(get())).json();const d=emptyAccount();d.profile={firstName:'New'} as any;assert.equal((await s.run('alice')(put(d,current.revision))).status,200);assert.equal((await s.run('alice')(put(emptyAccount(),current.revision))).status,409);assert.equal((await (await s.run('alice')(get())).json()).data.profile.firstName,'New');});
+test('rejects cross-origin writes, invalid documents, duplicate IDs and oversized input',async()=>{const s=setup(),run=s.run('alice');assert.equal((await run(put(emptyAccount(),null,'https://evil.example'))).status,403);assert.equal((await run(put({projects:[]}))).status,400);const d=emptyAccount();d.projects=[{id:'same'},{id:'same'}] as any;assert.equal((await run(put(d))).status,400);const big=emptyAccount();big.profile={firstName:'x'.repeat(2_000_001)} as any;assert.equal((await run(put(big))).status,413);assert.equal(s.records.size,0);});
+test('storage errors and missing write acknowledgements never report a saved account',async()=>{const run=accountHandler(async()=>({id:'alice'}),()=>({getWithMetadata:async()=>null,setJSON:async()=>({modified:true})}));assert.equal((await run(put(emptyAccount()))).status,503);});
+test('reset is a versioned empty document and leaves other accounts intact',async()=>{const s=setup();const d=emptyAccount();d.profile={firstName:'Private'} as any;await s.run('bob')(put(d));const saved=await(await s.run('alice')(put(d))).json();await s.run('alice')(put(emptyAccount(),saved.revision));assert.equal((await(await s.run('alice')(get())).json()).data.profile,null);assert.equal((await(await s.run('bob')(get())).json()).data.profile.firstName,'Private');});

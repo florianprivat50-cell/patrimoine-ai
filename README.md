@@ -54,7 +54,7 @@ Dossiers et preuves sont stockés dans le navigateur (Zustand/localStorage). L�
 - Pas de garantie d’extraction pour tous les portails : pas de navigateur distant, abonnement de données, OCR ou connecteur payant.
 - Pas encore de collecte de comparables locatifs ni de statistiques INSEE de vacance/démographie. Le référentiel historique de prix affiché est indicatif et n’alimente plus le score.
 - Pas de validation documentaire des baux, du DPE, des travaux, de la copropriété ou des risques de parcelle. Les plafonds de score restent donc délibérément restrictifs.
-- Pas d’authentification, de synchronisation multi-appareils ni de LLM génératif.
+- Pas de LLM génératif. Comptes et synchronisation : voir docs/accounts.md.
 
 ## Validation de cette livraison
 
@@ -66,7 +66,7 @@ Sur le poste Windows de validation, l’exécutable natif esbuild est bloqué pa
 
 - Barre d’application et installation guidée (invitation native quand elle est disponible ; instructions Safari sur iPhone/iPad et menu du navigateur ailleurs).
 - Icônes PNG 192/512 px, icône maskable, icône Apple 180 px, manifeste standalone avec raccourcis.
-- Cache de tous les fichiers nécessaires à l’interface, généré à chaque build et versionné par empreinte du contenu. Les API, les sources externes et les données privées du serveur ne sont pas mises en cache. Les dossiers restent locaux à cet appareil ; pas de synchronisation entre appareils.
+- Cache de tous les fichiers nécessaires à l’interface, généré à chaque build et versionné par empreinte du contenu. Les API, les sources externes et les données privées du serveur ne sont pas mises en cache. Le mode local reste propre à cet appareil. Les comptes connectés utilisent la synchronisation décrite dans docs/accounts.md.
 - Première connexion nécessaire pour télécharger l’interface. Les cartes distantes, la collecte d’annonces et l’actualisation des sources nécessitent toujours Internet.
 - Nouvelle version proposée via « Mettre à jour », sans rechargement forcé pendant une saisie. Conserver son dossier avant d’accepter. Le cache précédent reste disponible pour les autres onglets ouverts.
 - Transitions de navigation, progression indéterminée pendant la collecte, animation du score, retours de focus/clic et de sauvegarde. Effets de survol réservés à la souris et respect de `prefers-reduced-motion`.
@@ -83,3 +83,7 @@ npm run test:experience
 Ce test démarre son propre serveur local sur le port 5201. Il contrôle les critères d’installation Chromium (hors restriction inhérente au contexte privé du test), le dialogue et son focus, les instructions iPhone, cinq largeurs de 360 à 1440 px, les effets et leur désactivation, l’ouverture d’une route non encore visitée et son rechargement **serveur arrêté**, l’exclusion des API du cache, et l’activation explicite d’une mise à jour sans perte de la saisie avant acceptation. Ce sont des tests navigateur : l’installation sur un iPhone physique et la publication sur les boutiques Apple/Google ne sont pas réalisées.
 
 Références : [installation des PWA (MDN)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable), [invitation d’installation (MDN)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/How_to/Trigger_install_prompt).
+
+## Comptes personnels
+
+Connexion, sauvegarde privée et synchronisation : [activation et fonctionnement](docs/accounts.md). L’activation Identity sur le site Netlify est nécessaire.

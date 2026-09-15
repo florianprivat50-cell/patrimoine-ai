@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import type { AccountData } from "./lib/accountData";
 import {
   Asset,
   ChatMessage,
@@ -21,6 +21,8 @@ import {
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
 interface PiaState {
+  pipeline: AccountData["pipeline"];
+  setPipeline: (pipeline: AccountData["pipeline"]) => void;
   onboarded: boolean;
   demoMode: boolean;
   profile: Profile | null;
@@ -56,6 +58,7 @@ interface PiaState {
 }
 
 const emptyData = {
+  pipeline: {} as AccountData["pipeline"],
   profile: null as Profile | null,
   assets: [] as Asset[],
   liabilities: [] as Liability[],
@@ -66,8 +69,8 @@ const emptyData = {
 };
 
 export const useStore = create<PiaState>()(
-  persist(
     (set, get) => ({
+      setPipeline: (pipeline) => set({pipeline}),
       onboarded: false,
       demoMode: false,
       realBackup: null,
@@ -98,7 +101,7 @@ export const useStore = create<PiaState>()(
       removeProject: (id) =>
         set((s) => ({ projects: s.projects.filter((x) => x.id !== id) })),
 
-      pushChat: (m) => set((s) => ({ chat: [...s.chat, m].slice(-60) })),
+      pushChat: (m) => set((s) => ({ chat: [...s.chat, m] })),
       clearChat: () => set({ chat: [] }),
 
       recordSnapshot: (netWorth, gross, debts) => {
@@ -121,7 +124,7 @@ export const useStore = create<PiaState>()(
           snapshots: [
             ...s.snapshots,
             { date: today, netWorth: Math.round(netWorth), gross: Math.round(gross), debts: Math.round(debts) },
-          ].slice(-400),
+          ],
         });
       },
 
@@ -129,6 +132,7 @@ export const useStore = create<PiaState>()(
         const s = get();
         if (s.demoMode) return;
         const backup = JSON.stringify({
+          pipeline: s.pipeline,
           profile: s.profile,
           assets: s.assets,
           liabilities: s.liabilities,
@@ -142,6 +146,7 @@ export const useStore = create<PiaState>()(
           demoMode: true,
           realBackup: backup,
           onboarded: true,
+          pipeline: {},
           profile: demoProfile,
           assets: demoAssets,
           liabilities: demoLiabilities,
@@ -160,7 +165,5 @@ export const useStore = create<PiaState>()(
       },
 
       resetAll: () => set({ demoMode: false, realBackup: null, onboarded: false, ...emptyData }),
-    }),
-    { name: "patrimoine-ia" }
-  )
+    })
 );

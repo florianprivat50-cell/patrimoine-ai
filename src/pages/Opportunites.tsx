@@ -5,9 +5,9 @@ import { DEAL_STAGE_LABELS, DealStage, rankProjects, readPipeline, setDealStage 
 import { fmtEUR, fmtPct } from "../lib/finance";
 
 export default function Opportunites(){
- const projects=useStore(s=>s.projects); const [pipeline,setPipeline]=useState(readPipeline());
+ const projects=useStore(s=>s.projects); const pipeline=useStore(s=>s.pipeline);
  const ranked=useMemo(()=>rankProjects(projects),[projects]);
- const change=(id:string,stage:DealStage)=>setPipeline(setDealStage(id,stage));
+ const change=(id:string,stage:DealStage)=>setDealStage(id,stage);
  return <div className="opportunities-page">
   <header className="op-head"><span>PORTEFEUILLE D'OPPORTUNITÉS</span><h1>Mes analyses</h1><p>Classez vos dossiers, comparez leur rendement/risque et concentrez votre temps sur les meilleurs deals.</p></header>
   {ranked.length===0?<div className="empty-deals"><strong>Aucune opportunité enregistrée</strong><p>Votre prochaine décision commence par une annonce. Enregistrez vos analyses pour les retrouver et les comparer.</p><Link className="btn-primary empty-action" to="/">Analyser mon premier bien →</Link></div>:

@@ -8,13 +8,16 @@
     "build": "tsc -b && vite build && node scripts/build-pwa.mjs",
     "preview": "vite preview",
     "test": "node --import ./tests/register.mjs --test tests/*.test.ts",
-    "check:server": "tsc --noEmit --target ES2022 --module ESNext --moduleResolution bundler --skipLibCheck netlify/functions/analyze-listing.mts",
+    "check:server": "tsc --noEmit --target ES2022 --module ESNext --moduleResolution bundler --skipLibCheck netlify/functions/analyze-listing.mts netlify/functions/account.mts",
     "test:mobile": "node tests/mobile.cjs",
     "preview:qa": "node --import ./tests/register.mjs tests/server.mjs",
-    "test:experience": "node tests/experience.cjs"
+    "test:experience": "node tests/experience.cjs",
+    "test:accounts": "node tests/accounts.cjs"
   },
   "dependencies": {
+    "@netlify/blobs": "^11.1.0",
     "@netlify/functions": "^4.2.5",
+    "@netlify/identity": "^2.0.0",
     "@types/leaflet": "^1.9.22",
     "leaflet": "^1.9.4",
     "react": "^18.3.1",

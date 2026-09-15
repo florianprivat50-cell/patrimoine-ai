@@ -1,3 +1,6 @@
+import { startAccounts } from './lib/account';
+import { AccountBoundary } from './components/AccountAccess';
+import './account.css';
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -7,4 +10,5 @@ import "./invest.css";
 import "./luxury.css";
 import "./opportunities.css";
 import "./experience.css";
-ReactDOM.createRoot(document.getElementById("root")!).render(<React.StrictMode><BrowserRouter><App /></BrowserRouter></React.StrictMode>);
+void startAccounts();
+ReactDOM.createRoot(document.getElementById("root")!).render(<React.StrictMode><BrowserRouter><AccountBoundary><App /></AccountBoundary></BrowserRouter></React.StrictMode>);
