@@ -61,3 +61,25 @@ Dossiers et preuves sont stockés dans le navigateur (Zustand/localStorage). L�
 Tests du moteur et de dégradation des sources, vérification TypeScript client/serveur, build Vite et parcours mobile. Essai réseau réel le 14 septembre 2026 : IGN/BAN, Géorisques et DVF 2024/2025 accessibles pour Avranches ; 36 ventes simples retenues pour une maison de 100 m² selon les filtres ci-dessus. Ce résultat est un test du connecteur, pas une estimation individuelle.
 
 Sur le poste Windows de validation, l’exécutable natif esbuild est bloqué par le bac à sable. Le build a été exécuté avec **esbuild-wasm 0.21.5**, même version que le compilateur natif, substitué uniquement dans les dépendances locales ignorées par Git. Les dépendances livrées restent celles de `package-lock.json`. Vite signale encore un bundle principal supérieur à 500 kB.
+
+## Expérience ordinateur et application — 15 septembre 2026
+
+- Barre d’application et installation guidée (invitation native quand elle est disponible ; instructions Safari sur iPhone/iPad et menu du navigateur ailleurs).
+- Icônes PNG 192/512 px, icône maskable, icône Apple 180 px, manifeste standalone avec raccourcis.
+- Cache de tous les fichiers nécessaires à l’interface, généré à chaque build et versionné par empreinte du contenu. Les API, les sources externes et les données privées du serveur ne sont pas mises en cache. Les dossiers restent locaux à cet appareil ; pas de synchronisation entre appareils.
+- Première connexion nécessaire pour télécharger l’interface. Les cartes distantes, la collecte d’annonces et l’actualisation des sources nécessitent toujours Internet.
+- Nouvelle version proposée via « Mettre à jour », sans rechargement forcé pendant une saisie. Conserver son dossier avant d’accepter. Le cache précédent reste disponible pour les autres onglets ouverts.
+- Transitions de navigation, progression indéterminée pendant la collecte, animation du score, retours de focus/clic et de sauvegarde. Effets de survol réservés à la souris et respect de `prefers-reduced-motion`.
+- Zones tactiles, marges de sécurité des téléphones, boîte de dialogue accessible au clavier et lien d’accès direct au contenu. Les résultats financiers restent masqués tant que les données minimales ne sont pas renseignées.
+- Pages secondaires chargées à la demande : fichier JavaScript principal passé d’environ 924 Ko à 250 Ko avant compression (269 Ko à 83 Ko compressés). Le téléchargement de préparation du mode hors connexion conserve les autres fichiers de l’application.
+
+Vérifications supplémentaires :
+
+```sh
+npm run build
+npm run test:experience
+```
+
+Ce test démarre son propre serveur local sur le port 5201. Il contrôle les critères d’installation Chromium (hors restriction inhérente au contexte privé du test), le dialogue et son focus, les instructions iPhone, cinq largeurs de 360 à 1440 px, les effets et leur désactivation, l’ouverture d’une route non encore visitée et son rechargement **serveur arrêté**, l’exclusion des API du cache, et l’activation explicite d’une mise à jour sans perte de la saisie avant acceptation. Ce sont des tests navigateur : l’installation sur un iPhone physique et la publication sur les boutiques Apple/Google ne sont pas réalisées.
+
+Références : [installation des PWA (MDN)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable), [invitation d’installation (MDN)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/How_to/Trigger_install_prompt).

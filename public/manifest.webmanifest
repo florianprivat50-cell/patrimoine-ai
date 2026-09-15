@@ -1,13 +1,22 @@
 {
-  "name": "Patrimoine IA",
-  "short_name": "Patrimoine IA",
-  "description": "Votre copilote patrimonial intelligent",
+  "id": "/",
+  "name": "Patrimoine AI",
+  "short_name": "Patrimoine",
+  "description": "Analysez et comparez vos opportunités immobilières.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0d0d0d",
-  "theme_color": "#0d0d0d",
+  "background_color": "#071017",
+  "theme_color": "#071017",
   "lang": "fr",
+  "categories": ["finance", "productivity"],
   "icons": [
-    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    {"src":"/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any"},
+    {"src":"/icon-maskable.png","sizes":"512x512","type":"image/png","purpose":"maskable"}
+  ],
+  "shortcuts": [
+    {"name":"Analyser une annonce","url":"/","icons":[{"src":"/icon-192.png","sizes":"192x192"}]},
+    {"name":"Mes analyses","url":"/projets","icons":[{"src":"/icon-192.png","sizes":"192x192"}]}
   ]
 }

@@ -1,3 +1,4 @@
+import AppExperience from './AppExperience';
 import { ReactNode, useMemo } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { IconBuilding, IconHome, IconMap, IconSettings, IconSparkles, IconTarget, IconWallet } from "./icons";
@@ -39,13 +40,14 @@ export default function Layout({ children }: { children: ReactNode }) {
         <span><strong>PATRIMOINE <i>AI</i></strong><small>ANALYSE · OPTIMISE · INVESTIS</small></span>
       </button>
       <div className="nav-caption">NAVIGATION</div>
-      <nav className="modern-nav">{NAV.map(({to,label,Icon}) => <NavLink key={to} to={to} end={to==="/"} className={({isActive})=>isActive?"active":""}><Icon size={18}/><span>{label}</span></NavLink>)}</nav>
+      <nav aria-label="Navigation principale" className="modern-nav">{NAV.map(({to,label,Icon}) => <NavLink key={to} to={to} end={to==="/"} className={({isActive})=>isActive?"active":""}><Icon size={18}/><span>{label}</span></NavLink>)}</nav>
       <div className="sidebar-foot">{profile && <button className="profile-chip" onClick={()=>navigate("/profil")}><span>{initials(profile.firstName||"FP")}</span><div><strong>{profile.firstName}</strong><small>{fmtEUR(netWorth)} net</small></div></button>}<p>Analyse indépendante. Les hypothèses et la confiance des données restent visibles.</p></div>
     </aside>
     <div className="app-content">
+      <AppExperience/>
       {demoMode && <div className="demo-banner"><span>Mode démonstration</span><button onClick={()=>{exitDemo();navigate("/")}}>Quitter</button></div>}
-      <main key={location.pathname} className="page-stage">{children}</main>
+      <main id="main-content" tabIndex={-1} key={location.pathname} className="page-stage">{children}</main>
     </div>
-    <nav className="mobile-dock luxury-dock">{MOBILE_NAV.map(({to,label,Icon})=><NavLink key={label} to={to} end={to==="/"} className={({isActive})=>isActive?"active":""}><span><Icon size={20}/></span><small>{label}</small></NavLink>)}</nav>
+    <nav aria-label="Navigation mobile" className="mobile-dock luxury-dock">{MOBILE_NAV.map(({to,label,Icon})=><NavLink key={label} to={to} end={to==="/"} className={({isActive})=>isActive?"active":""}><span><Icon size={20}/></span><small>{label}</small></NavLink>)}</nav>
   </div>;
 }

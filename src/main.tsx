@@ -6,4 +6,5 @@ import "./index.css";
 import "./invest.css";
 import "./luxury.css";
 import "./opportunities.css";
+import "./experience.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(<React.StrictMode><BrowserRouter><App /></BrowserRouter></React.StrictMode>);

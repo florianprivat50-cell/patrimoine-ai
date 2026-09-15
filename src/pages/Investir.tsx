@@ -179,6 +179,7 @@ export default function Investir() {
         <div className="trust-row">
           <span>Extraction de l’annonce</span><span>Marché local</span><span>Stress-test</span><span>Score /100</span>
         </div>
+        {loading&&<div className="analysis-progress" role="status"><span className="progress-orbit"/><div><strong>Votre dossier prend forme</strong><p>Collecte des informations et vérification des sources disponibles…</p></div><span className="progress-track"/></div>}
         {listing && (
           <div className={`source-status ${listing.ok ? "ok" : "error"}`}>
             <strong>{listing.ok ? "Annonce analysée" : "Analyse incomplète"}</strong>
@@ -188,7 +189,7 @@ export default function Investir() {
         )}
       </section>
 
-      <section className="deal-workspace animate-in">
+      <section className="deal-workspace animate-in" aria-busy={loading}>
         <div className="deal-editor">
           <div className="section-heading">
             <div><span className="eyebrow">Données du deal</span><h2>Les chiffres qui pilotent la décision</h2></div>
@@ -218,7 +219,7 @@ export default function Investir() {
           </div>
 
           <button className="save-deal" disabled={loading||(!p.city&&!p.postalCode&&!p.address)} onClick={refreshLocal}>Actualiser le marché et les risques</button>
-          <div className="scenario-row">
+          <div className="scenario-row" hidden={!valid}>
             {([
               ["Prudent", prudent],
               ["Réaliste", realistic],
@@ -234,8 +235,8 @@ export default function Investir() {
         </div>
 
         <aside className={`feasibility-card ${scoreTone}`}>
-          <div className="score-topline"><span>Faisabilité du projet</span><em>Grade {feasibility.grade}</em></div>
-          <div className="score-ring" style={{ "--score": `${feasibility.score * 3.6}deg` } as React.CSSProperties}>
+          <div className="score-topline"><span>Faisabilité du projet</span><em>{valid?`Grade ${feasibility.grade}`:"En attente"}</em></div>
+          <div className="score-ring" key={feasibility.score} style={{ "--score": `${feasibility.score * 3.6}deg` } as React.CSSProperties}>
             <div><strong>{valid?feasibility.score:"—"}</strong><span>/100</span></div>
           </div>
           <h2>{valid?feasibility.verdict:"À compléter"}</h2>
@@ -245,6 +246,7 @@ export default function Investir() {
               : "Le dossier demande encore des preuves ou une amélioration du prix / financement avant de devenir robuste."}
           </p>
 
+          {valid ? <>
           <div className="metrics-hero">
             <div><span>Cash-flow</span><strong className={realistic.monthlyCashflow >= 0 ? "positive" : "negative"}>{realistic.monthlyCashflow >= 0 ? "+" : "−"}{fmtEUR(Math.abs(realistic.monthlyCashflow))}</strong></div>
             <div><span>Rentabilité nette</span><strong>{fmtPct(realistic.netAfterTaxYieldPct)}</strong></div>
@@ -265,7 +267,8 @@ export default function Investir() {
             <div className="score-alert"><strong>Plafond de sécurité</strong><span>{feasibility.hardCaps.join(" ")}</span></div>
           )}
 
-          <button className="save-deal" disabled={!valid||loading} onClick={saveProject}>{saved ? "✓ Opportunité enregistrée" : "Enregistrer cette opportunité"}</button>
+          </> : <p className="analysis-note">Renseignez le prix, la surface et les loyers pour découvrir le score et les scénarios de votre investissement.</p>}
+          <button className={`save-deal ${saved?"is-saved":""}`} disabled={!valid||loading} onClick={saveProject}>{saved ? "✓ Opportunité enregistrée" : "Enregistrer cette opportunité"}</button>
         </aside>
       </section>
 

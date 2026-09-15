@@ -1,0 +1,10 @@
+import { readdir, readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+const files=(await readdir('dist')).filter(f=>/\.(?:js|css|html|png|svg|webmanifest)$/.test(f)&&f!=='sw.js').sort();
+const digest=createHash('sha256');
+for(const file of files)digest.update(file).update(await readFile('dist/'+file));
+const template=await readFile('public/sw.js','utf8');digest.update(template);
+const version=digest.digest('hex').slice(0,16);
+const script=template.replace('__BUILD_ID__',version).replace(/\/\*__PRECACHE__\*\/ \[[^\]]*\]/,JSON.stringify(files.map(f=>'/'+f)));
+await writeFile('dist/sw.js',script);
+console.log(`Offline app shell: ${files.length} assets, version ${version}`);
