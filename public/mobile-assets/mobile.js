@@ -33,6 +33,7 @@ function renderAccount(){
  $('#auth-submit').disabled=!backend||authBusy;
 }
 function render(){
+ window.piaWelcome?.update(auth,mode==='demo');
  const open=mode==='demo'||(auth.user&&auth.ready&&!auth.resetPassword&&!auth.invite);
  document.body.classList.toggle('workspace-open',!!open);$('#workspace-content').hidden=!open;$('#auth-gate').hidden=!!open;
  $$('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
@@ -115,7 +116,7 @@ function renderNumbers(){if(!editing)return;const p=readForm();if(!usable(p))ret
 function showResult(){showStep(3);$('#price-slider').value='0';renderNumbers();}
 function scenario(){if(!editing)return;const p=readForm(),q=evaluated(p),delta=Number($('#price-slider').value),test={...q,price:q.price*(1+delta/100)};$('#price-delta').textContent=(delta>0?'+':'')+delta+' %';if(test.downPayment>budget(test)){$('#scenario-output').textContent='À ce prix, l’apport dépasse le coût total. Ajustez l’apport.';return;}const m=calculate(test);$('#scenario-output').innerHTML='À <strong>'+esc(euro(test.price))+'</strong>, cash-flow : <strong>'+esc(signed(m.cashflow))+'/mois</strong>. Même apport, autres hypothèses inchangées.';}
 async function save(){if(!validate(1)){showStep(1);validate(1);return;}if(!validate(2)){showStep(2);validate(2);return;}stash();if(mode==='demo'){closeDialog('editor');toast('Démonstration terminée. Aucun dossier envoyé au compte.');return;}$('#save').disabled=true;try{const done=await backend.sync();closeDialog('editor');toast(done?'Dossier sauvegardé dans votre compte.':'Dossier en attente : vérifiez le statut de sauvegarde.');}catch(e){toast(e.message||'Sauvegarde non confirmée.');}finally{$('#save').disabled=false;}}
-function accountOpen(){if(!auth.user){mode='mine';setAuthMode('login');render();$('#auth-email').focus();return;}renderAccount();showDialog('account-dialog');}
+function accountOpen(){if(!auth.user){mode='mine';setAuthMode('login');location.hash='connexion';render();$('#auth-email').focus();return;}renderAccount();showDialog('account-dialog');}
 async function accountAction(fn){$('#account-error').hidden=true;try{await fn();}catch(e){$('#account-error').textContent=e.message||'Action non effectuée.';$('#account-error').hidden=false;}}
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
  if(b.dataset.close){closeDialog(b.dataset.close);return;}if(b.dataset.authMode){setAuthMode(b.dataset.authMode);return;}
@@ -143,4 +144,6 @@ $('#sync-account').addEventListener('click',()=>accountAction(()=>backend.retry(
 $('#logout').addEventListener('click',()=>accountAction(async()=>{await backend.logout();if($('#account-dialog').open)closeDialog('account-dialog');mode='mine';render();}));
 $('#remote-version').addEventListener('click',()=>accountAction(async()=>{if(confirm('Charger les données du compte et remplacer votre version locale ? Exportez-la avant de continuer.'))await backend.resolve(false);}));
 $('#local-version').addEventListener('click',()=>accountAction(async()=>{if(confirm('Remplacer la version du compte par vos données locales, y compris les modifications faites ailleurs ?'))await backend.resolve(true);}));
-setAuthMode('login');render();initBridge();
+addEventListener('pia:welcome-auth',e=>{mode='mine';setAuthMode(e.detail);render();});
+addEventListener('pia:welcome-home',()=>{mode='mine';render();});
+setAuthMode(location.hash==='#inscription'?'signup':'login');render();initBridge();
