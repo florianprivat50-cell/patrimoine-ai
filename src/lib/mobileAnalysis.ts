@@ -1,5 +1,6 @@
 import type { RealEstateProjectInputs } from '../types';
 import { computeProject, scenarioInputs } from './realestate';
+import { projectFeasibility } from './projectAnalysis';
 
 /** The mobile view is explicitly before tax; no inferred local rent or tax regime. */
 export function mobileAnalysis(input: RealEstateProjectInputs) {
@@ -7,6 +8,10 @@ export function mobileAnalysis(input: RealEstateProjectInputs) {
   const r = computeProject(p);
   const adverse = scenarioInputs(p, 'prudent');
   const stress = computeProject(adverse);
+  const feasibility = projectFeasibility(p, {realiste:r, prudent:stress, optimiste:computeProject(scenarioInputs(p, 'optimiste'))});
+  feasibility.components = feasibility.components.map(c => c.key === 'economics'
+    ? {...c, label:'Équilibre financier', explanation:`Rendement net d’exploitation avant impôt (cible ${p.targetNetYieldPct ?? 5.5} %), trésorerie et couverture du crédit.`}
+    : c);
   const insurance = r.financed * p.insurancePctYearly / 1200;
   const checks = ['Loyers et vacance : confirmer par des baux ou des références locatives récentes.',
     'Impôts non calculés : le résultat dépendra du régime de détention et de location.'];
@@ -23,6 +28,6 @@ export function mobileAnalysis(input: RealEstateProjectInputs) {
     effectiveRent: r.effectiveMonthlyRent, operating: r.effectiveMonthlyRent - r.yearlyNetIncome / 12,
     cashflow: r.monthlyCashflow, grossYield: r.grossYieldPct, netYield: r.netYieldPct,
     monthlyPayment: r.monthlyLoanPayment, breakEvenRent: r.breakEvenRent,
-    stressCashflow: stress.monthlyCashflow, stressVacancy: adverse.vacancyPct, checks,
+    stressCashflow: stress.monthlyCashflow, stressVacancy: adverse.vacancyPct, checks, feasibility,
   };
 }

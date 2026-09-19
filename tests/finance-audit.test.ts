@@ -9,6 +9,19 @@ import type { RealEstateProjectInputs } from '../src/types';
 const p: RealEstateProjectInputs = {price:220000,agencyFees:0,notaryFeesPct:8,works:20000,furniture:0,bankFees:1500,downPayment:15000,ratePct:3.5,durationYears:25,insurancePctYearly:.3,monthlyRent:2100,commercialMonthlyRent:0,vacancyPct:8,monthlyCharges:100,propertyTaxYearly:1500,ownerInsuranceYearly:0,managementPct:0,maintenancePct:5,taxRatePct:0,rentGrowthPct:0,valueGrowthPct:0};
 const near = (a:number,b:number) => assert.ok(Math.abs(a-b)<.01, `${a} != ${b}`);
 
+test('mobile feasibility uses shared before-tax scenarios and exposes missing evidence',()=>{
+ const actual=mobileAnalysis({...p,taxRatePct:45}).feasibility;
+ assert.equal(actual.score,projectFeasibility({...p,taxRatePct:0}).score);
+ assert.equal(actual.calculable,true);assert.equal(actual.components.length,5);
+ assert.equal(actual.components.reduce((sum,c)=>sum+c.weight,0),100);
+ assert.ok(actual.hardCaps.length>0);assert.ok(actual.score<=68);
+ assert.match(actual.components[0].explanation,/avant impôt/);
+ assert.ok(mobileAnalysis({...p,monthlyRent:500}).feasibility.score<actual.score);
+ assert.equal(mobileAnalysis({...p,monthlyRent:0,commercialMonthlyRent:2100}).feasibility.score,actual.score);
+ assert.equal(mobileAnalysis({...p,vacancyPct:100}).feasibility.calculable,true);
+ assert.equal(mobileAnalysis({...p,monthlyRent:0}).feasibility.calculable,false);
+});
+
 test('loan payments match discounted instalments and iterative balances in 60 cases',()=>{
  for(const capital of [50000,200000,500000])for(const rate of [0,1.5,3.5,6,12])for(const years of [1,10,25,40]){
   let annuity=0;for(let m=1;m<=years*12;m++)annuity+=(1+rate/1200)**(-m);
