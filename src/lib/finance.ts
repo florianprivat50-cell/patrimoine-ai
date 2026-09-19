@@ -45,11 +45,16 @@ export function remainingInterest(
 
 /** TRI annuel par bissection sur des flux annuels (flux[0] = investissement négatif) */
 export function irr(cashflows: number[]): number | null {
+  if (cashflows.length < 2 || !cashflows.every(Number.isFinite) || cashflows[0] >= 0) return null;
+  const signs = cashflows.filter(x => x !== 0).map(Math.sign);
+  // More than one sign change can yield multiple IRRs: do not pick one arbitrarily.
+  if (signs.slice(1).filter((s, i) => s !== signs[i]).length !== 1) return null;
   const npv = (rate: number) =>
     cashflows.reduce((acc, cf, i) => acc + cf / Math.pow(1 + rate, i), 0);
-  let lo = -0.99;
+  let lo = -0.999999;
   let hi = 10;
-  if (npv(lo) * npv(hi) > 0) return null;
+  for (let i = 0; i < 60 && npv(hi) > 0; i++) hi *= 2;
+  if (!(npv(lo) >= 0) || !(npv(hi) <= 0)) return null;
   for (let i = 0; i < 200; i++) {
     const mid = (lo + hi) / 2;
     if (npv(mid) > 0) lo = mid;

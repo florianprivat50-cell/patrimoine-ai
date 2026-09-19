@@ -4,7 +4,7 @@
 import { login, signup, requestPasswordRecovery, updateUser, acceptInvite } from '@netlify/identity';
 import { useStore } from '../store';
 import { useAccount, startAccounts, syncAccount, retryAccount, signOut, resolveConflict, downloadAccount } from '../lib/account';
-import { computeProject } from '../lib/realestate';
+import { mobileAnalysis } from '../lib/mobileAnalysis';
 import { invalidateEvidence } from '../lib/evidence';
 import type { RealEstateProject } from '../types';
 
@@ -39,15 +39,7 @@ function toUI(p:RealEstateProject):UI {
   return result;
 }
 function calculate(p:UI) {
-  const q=toProject(p);
-  // Display operating yield and cash-flow BEFORE tax, not the old flat-tax approximation.
-  // Residential and commercial rents are distinct inputs; the shared engine sums them once.
-  const r=computeProject({...q,taxRatePct:0});
-  const insurance=r.financed*q.insurancePctYearly/1200;
-  return {total:r.totalCost,loan:r.financed,credit:r.monthlyLoanPayment-insurance,insurance,
-    effectiveRent:r.effectiveMonthlyRent,operating:r.effectiveMonthlyRent-r.yearlyNetIncome/12,
-    cashflow:r.yearlyNetIncome/12-r.monthlyLoanPayment,grossYield:r.grossYieldPct,
-    netYield:r.netYieldPct,monthlyPayment:r.monthlyLoanPayment};
+  return mobileAnalysis(toProject(p));
 }
 function state(){
   const a=useAccount.getState();

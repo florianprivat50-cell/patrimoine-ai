@@ -16,7 +16,7 @@ export interface ProjectResults {
   irrPct: number | null; // TRI sur 20 ans avec revente
   npv20: number; // VAN à 4 % sur 20 ans
   paybackYears: number | null; // récupération de l'apport par les cash-flows
-  breakEvenRent: number; // loyer mensuel pour cash-flow nul
+  breakEvenRent: number | null; // null : aucun loyer fini ne permet l'équilibre
   maxPrice: number | null; // prix d'achat max pour cash-flow nul (mêmes autres hypothèses)
   effectiveMonthlyRent: number;
   grossMonthlyRent: number; // loyers logements + commercial, hors vacance
@@ -62,7 +62,7 @@ export function computeProject(p: RealEstateProjectInputs): ProjectResults {
 
   // TRI sur 20 ans : apport initial négatif, cash-flows annuels, revente nette du CRD en année 20
   const horizon = 20;
-  const flows: number[] = [-Math.max(1, p.downPayment)];
+  const flows: number[] = [-p.downPayment];
   let rent = effectiveMonthlyRent * 12;
   for (let y = 1; y <= horizon; y++) {
     const costs =
@@ -82,7 +82,7 @@ export function computeProject(p: RealEstateProjectInputs): ProjectResults {
     flows.push(cf);
     rent *= 1 + p.rentGrowthPct / 100;
   }
-  const irrPct = irr(flows);
+  const irrPct = p.downPayment > 0 ? irr(flows) : null;
   const npv20 = npv(flows, 4);
 
   // Délai de récupération de l'apport par les cash-flows cumulés (hors revente)
@@ -109,21 +109,12 @@ export function computeProject(p: RealEstateProjectInputs): ProjectResults {
   const share = 1 - (p.managementPct + p.maintenancePct) / 100;
   // Même fiscalité simplifiée que le cash-flow : impôt sur le revenu net positif.
   const breakEvenRent =
-    share > 0
-      ? (fixedYear + monthlyLoanPayment * 12 / Math.max(0.01, 1 - p.taxRatePct / 100)) / 12 / share / Math.max(0.01, 1 - p.vacancyPct / 100)
-      : 0;
+    share > 0 && p.vacancyPct < 100 && p.taxRatePct < 100
+      ? (fixedYear + monthlyLoanPayment * 12 / (1 - p.taxRatePct / 100)) / 12 / share / (1 - p.vacancyPct / 100)
+      : null;
 
   // Prix max pour cash-flow ≥ 0 (recherche dichotomique sur le prix)
-  let maxPrice: number | null = null;
-  let lo = 0;
-  let hi = p.price * 3 + 100000;
-  for (let i = 0; i < 60; i++) {
-    const mid = (lo + hi) / 2;
-    const test = computeCashflowForPrice({ ...p, price: mid });
-    if (test >= 0) lo = mid;
-    else hi = mid;
-  }
-  maxPrice = lo > 1000 ? lo : null;
+  const maxPrice = highestFeasiblePrice(p.price, price => computeCashflowForPrice({ ...p, price }) >= 0);
 
   return {
     totalCost,
@@ -153,16 +144,22 @@ export function maxPriceForTargetYield(
   targetNetAfterTaxPct: number
 ): number | null {
   if (targetNetAfterTaxPct <= 0) return null;
-  let lo = 0;
-  let hi = p.price * 3 + 200000;
   const yieldAt = (price: number) => computeProject({ ...p, price }).netAfterTaxYieldPct;
-  if (yieldAt(1000) < targetNetAfterTaxPct) return null; // même quasi gratuit, la cible n'est pas atteinte
-  for (let i = 0; i < 60; i++) {
+  return highestFeasiblePrice(p.price, price => yieldAt(price) >= targetNetAfterTaxPct);
+}
+
+/** Bracket the actual boundary before bisection; never return a search limit as a price. */
+function highestFeasiblePrice(askingPrice: number, feasible: (price: number) => boolean): number | null {
+  let lo = 0.01;
+  if (!feasible(lo)) return null;
+  let hi = Math.max(100000, askingPrice * 2);
+  for (let i = 0; i < 60 && feasible(hi); i++) hi *= 2;
+  if (!Number.isFinite(hi) || feasible(hi)) return null;
+  for (let i = 0; i < 80; i++) {
     const mid = (lo + hi) / 2;
-    if (yieldAt(mid) >= targetNetAfterTaxPct) lo = mid;
-    else hi = mid;
+    if (feasible(mid)) lo = mid; else hi = mid;
   }
-  return lo > 1000 ? lo : null;
+  return lo;
 }
 
 function computeCashflowForPrice(p: RealEstateProjectInputs): number {
@@ -200,11 +197,11 @@ export function scenarioInputs(
   if (kind === "prudent") {
     return {
       ...p,
-      vacancyPct: Math.min(30, p.vacancyPct + 5),
-      works: Math.round(p.works * 1.15),
-      monthlyRent: Math.round(p.monthlyRent * 0.95),
-      commercialMonthlyRent: Math.round((p.commercialMonthlyRent ?? 0) * 0.95),
-      monthlyCharges: Math.round(p.monthlyCharges * 1.1),
+      vacancyPct: Math.min(100, p.vacancyPct + 5),
+      works: p.works * 1.15,
+      monthlyRent: p.monthlyRent * 0.95,
+      commercialMonthlyRent: (p.commercialMonthlyRent ?? 0) * 0.95,
+      monthlyCharges: p.monthlyCharges * 1.1,
       valueGrowthPct: p.valueGrowthPct - 1,
     };
   }

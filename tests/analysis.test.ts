@@ -50,7 +50,7 @@ test('assistant asks for selection and simulations never mutate saved project',(
  const a=answerDealQuestion('Simule 30 000 € de travaux',[fixture],fixture.id)!;assert.match(a.conclusion,/30/);assert.deepEqual(fixture,copy);
 });
 test('break-even rent reconciles with after-tax cash flow',()=>{
- const r=computeProject(fixture);const at=computeProject({...fixture,monthlyRent:r.breakEvenRent});assert.ok(Math.abs(at.monthlyCashflow)<.0001);
+ const r=computeProject(fixture);assert.notEqual(r.breakEvenRent,null);const at=computeProject({...fixture,monthlyRent:r.breakEvenRent!});assert.ok(Math.abs(at.monthlyCashflow)<.0001);
 });
 test('local pipeline retains geolocation and flags failed providers rather than inventing values',async()=>{
  const e:any={version:1,retrievedAt:new Date().toISOString(),fields:[],sources:[],market:{},risks:{},riskLabels:[],warnings:[]};

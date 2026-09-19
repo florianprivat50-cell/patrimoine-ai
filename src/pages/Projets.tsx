@@ -570,7 +570,7 @@ function DecisionPanel({
           label="Part du loyer commercial"
           value={deal.commercialSharePct > 0 ? fmtPct(deal.commercialSharePct, 0) : "—"}
         />
-        <PanelRow label="Loyer d'équilibre" value={`${fmtEUR(r.breakEvenRent)}/mois`} />
+        <PanelRow label="Loyer d'équilibre" value={r.breakEvenRent === null ? "Impossible avec ces hypothèses" : `${fmtEUR(r.breakEvenRent)}/mois`} />
         <PanelRow
           label="Marge sur l'équilibre"
           value={deal.rentMarginPct === null ? "—" : `${deal.rentMarginPct >= 0 ? "+" : ""}${fmtPct(deal.rentMarginPct, 0)}`}
@@ -629,9 +629,9 @@ function DecisionPanel({
       </div>
 
       <p className="text-[10px] leading-relaxed" style={{ color: "var(--panel-muted)" }}>
-        Simulation indicative fondée sur vos hypothèses (vacance {fmtPct(effective.vacancyPct, 0)}, fiscalité{" "}
+        Simulation indicative fondée sur vos hypothèses (vacance {fmtPct(effective.vacancyPct, 0)}, prélèvement fiscal forfaitaire{" "}
         {fmtPct(effective.taxRatePct, 0)}, entretien {fmtPct(effective.maintenancePct, 0)} des loyers). Le détail du
-        score est consultable ci-dessus ; les évolutions de marché restent incertaines. Ceci n'est pas un conseil en
+        score est consultable ci-dessus ; il ne mesure pas une probabilité de réussite. Le forfait fiscal ne reproduit aucun régime réel et ne déduit pas les intérêts d’emprunt. Le TRI suppose une revente à 20 ans avec 7 % de frais, hors fiscalité de cession, et des charges fixes sans inflation. Les évolutions de marché restent incertaines. Ceci n'est pas un conseil en
         investissement.
       </p>
     </div>

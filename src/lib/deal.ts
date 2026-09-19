@@ -92,7 +92,7 @@ export function computeDeal(p: RealEstateProjectInputs): DealAnalysis {
   const cf=r.monthlyCashflow;
   const cfP=results.prudent.monthlyCashflow;
   const yieldRatio=target>0?r.netAfterTaxYieldPct/target:1;
-  const rentMarginPct=r.breakEvenRent>0?((r.grossMonthlyRent-r.breakEvenRent)/r.breakEvenRent)*100:null;
+  const rentMarginPct=r.breakEvenRent!==null&&r.breakEvenRent>0?((r.grossMonthlyRent-r.breakEvenRent)/r.breakEvenRent)*100:null;
   const feasibility=projectFeasibility(p,results);
   const score=feasibility.score;
   const verdict:Verdict=score<45?'refuser':score<70?'negocier':'accepter';
@@ -161,12 +161,12 @@ export function computeDeal(p: RealEstateProjectInputs): DealAnalysis {
     risks.push(`Vacance supposée ${fmtPct(p.vacancyPct, 0)} : optimiste pour la plupart des marchés.`);
   if (p.rentalMode === "saisonnier")
     risks.push("Location saisonnière : revenus volatils, réglementation locale à vérifier (autorisation, quotas, changement d'usage).");
-  if (rentMarginPct !== null && rentMarginPct < 0)
+  if (rentMarginPct !== null && rentMarginPct < 0 && r.breakEvenRent !== null)
     risks.push(`Loyers sous le point d'équilibre : il manque ${fmtEUR(r.breakEvenRent - r.grossMonthlyRent)}/mois.`);
   if (market && market.gapPct >= 15)
-    risks.push(`Prix ${fmtPct(market.gapPct, 0)} au-dessus de la moyenne du marché à ${market.place} (${fmtEUR(market.refPricePerSqm)}/m²) : potentiel de plus-value limité.`);
+    risks.push(`Prix ${fmtPct(market.gapPct, 0)} au-dessus du référentiel indicatif non vérifié à ${market.place} (${fmtEUR(market.refPricePerSqm)}/m²). À confronter à des ventes récentes de biens comparables.`);
   if (market && market.tension === "faible")
-    risks.push(`Tension locative faible à ${market.place} : délai de relocation potentiellement plus long.`);
+    risks.push(`Le référentiel indicatif suggère une tension locative faible à ${market.place} ; cette hypothèse reste à vérifier localement.`);
   if (market && market.precision === "departement")
     risks.push(`Comparaison au niveau départemental (${market.place}) — la ville n'est pas répertoriée précisément, l'écart réel peut différer.`);
   if (risks.length === 0) risks.push("Pas de risque structurel détecté — restent les risques d'exécution (travaux, locataires).");

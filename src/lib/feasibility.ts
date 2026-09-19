@@ -37,7 +37,7 @@ export interface FeasibilityInputs {
   totalCost: number;
   subjectMonthlyRent: number;
   targetNetYieldPct?: number;
-  breakEvenRent: number;
+  breakEvenRent: number | null;
   realistic: ScenarioFeasibilityInput;
   prudent: ScenarioFeasibilityInput;
   optimistic: ScenarioFeasibilityInput;
@@ -156,7 +156,7 @@ export function computeFeasibilityScore(input: FeasibilityInputs): FeasibilityRe
 
   const prudentCashflowScore = scoreRange(input.prudent.monthlyCashflow, -450, 200);
   const prudentDscrScore = scoreRange(dscrPrudent, 0.75, 1.20);
-  const breakEvenMarginPct = input.subjectMonthlyRent > 0
+  const breakEvenMarginPct = input.subjectMonthlyRent > 0 && input.breakEvenRent !== null
     ? ((input.subjectMonthlyRent - input.breakEvenRent) / input.subjectMonthlyRent) * 100
     : -100;
   const breakEvenScore = scoreRange(breakEvenMarginPct, -20, 20);
