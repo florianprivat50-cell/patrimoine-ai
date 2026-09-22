@@ -35,7 +35,7 @@ export default function RentalComparison({projects,demo=false}:{projects:RealEst
     ['Références de ventes / loyers',d=>`${d.saleCount} / ${d.rentCount}`],
   ];
   return <section className="rental-comparison" aria-label="Comparateur d’achats locatifs">
-    <p className="rc-intro">Sélectionnez deux ou trois biens. Comparez les montants et les incertitudes : une meilleure trésorerie ne suffit pas à désigner le meilleur achat.</p>
+    <p className="rc-intro">Sélectionnez deux ou trois biens. La comparaison utilise les loyers et la vacance enregistrés dans chaque dossier. Comparez les montants et les incertitudes : une meilleure trésorerie ne suffit pas à désigner le meilleur achat.</p>
     {demo&&<p className="rc-notice">Exemples fictifs · aucun dossier personnel créé.</p>}
     <fieldset className="rc-picker"><legend>Biens à comparer · {chosen.length}/3</legend>{projects.length?projects.map(p=><label key={p.id}><input type="checkbox" checked={selected.includes(p.id)} onChange={()=>toggle(p.id)}/><span><strong>{p.name||'Sans titre'}</strong><small>{p.city||'Ville à préciser'} · {Number.isFinite(p.price)?euros(p.price):'Prix manquant'}</small></span></label>):<p>Enregistrez deux analyses pour commencer.</p>}</fieldset>
     {notice&&<p role="status">{notice}</p>}
