@@ -2,6 +2,25 @@
 
 L’accueil analyse une annonce, conserve les preuves avec le dossier et partage le même score avec Mes analyses et l’assistant. Identité : bleu nuit/noir, or champagne, Playfair Display et DM Sans.
 
+## État des comptes — 22 septembre 2026
+
+Cette branche contient l’accès personnel par e-mail/mot de passe et la sauvegarde privée avec Netlify Identity et Blobs. `main` décrit encore le MVP local historique. Les changements de compte sont livrés séparément de la PR visuelle #1.
+
+Sur le site `gregarious-moonbeam-d9e5b6`, Identity répond avec inscriptions ouvertes et confirmation e-mail obligatoire. Le code servi en production diffère de cette branche et utilise `/api/workspace` (401 sans connexion) ; l’endpoint `/.netlify/functions/account` attendu ici y renvoie du HTML. L’activation d’Identity seule ne prouve donc pas le déploiement de cette implémentation ni la synchronisation de ses données. Voir [le diagnostic et les vérifications](docs/accounts.md).
+
+## Analyser et comparer un achat locatif
+
+Le parcours `/mobile/` et la page « Mes analyses » proposent un comparateur de deux ou trois biens en location longue durée. Il réutilise le moteur financier et les dossiers du compte, avec un mode démonstration explicite.
+
+- Comparaison avec le financement propre à chaque dossier ou un apport, un taux, une durée et une assurance communs, sans modifier les dossiers enregistrés.
+- Coût total, trésorerie mensuelle avant impôt, scénario dégradé, rendement net d’exploitation, loyers et prix d’équilibre.
+- Données manquantes et contradictoires visibles ; références de plus de 90 jours ou datées dans le futur exclues du compte de références récentes. Les brouillons et données financières invalides ne reçoivent pas de verdict.
+- Questions pour la visite et export CSV des hypothèses et résultats. Aucun classement automatique ne désigne un achat gagnant.
+
+Les prix d’équilibre sont des seuils financiers, pas des estimations de marché. Le scénario dégradé baisse les loyers de 5 %, augmente la vacance de 5 points (maximum 100 %), les travaux de 15 % et les charges mensuelles de 10 %. L’apport reste constant ; les travaux supplémentaires sont financés. La fiscalité par régime reste à étudier séparément. Aucun LLM génératif n’est ajouté.
+
+Cette branche réunit le parcours mobile de la PR #1 et les corrections de compte de la PR #2. La mise en production nécessite encore de rapprocher le code actuellement publié et de vérifier un compte confirmé sur deux appareils. Les tests automatisés de stockage ne remplacent pas cette vérification réelle.
+
 ## Développement et vérification
 
 Node **24+** est nécessaire pour le lanceur de tests.
@@ -47,7 +66,7 @@ L’assistant immobilier utilise des **calculs déterministes**, sans LLM ni cl�
 
 Le prix cible est recherché entre 1 € et le prix actuel, à hypothèses et qualité des preuves constantes. Il ne promet pas de franchir un plafond de preuve par une simple négociation. Les simulations ne constituent pas des offres envoyées.
 
-Dossiers et preuves sont stockés dans le navigateur (Zustand/localStorage). L’analyse envoie l’URL au serveur ; l’actualisation locale transmet les données de localisation et de comparaison aux fonctions serveur. Les services externes reçoivent les requêtes nécessaires. Les anciens dossiers sans preuves restent lisibles mais leur score est recalculé prudemment. Changer l’adresse invalide les données locales ; changer la surface ou le type invalide les comparables. Le bouton d’actualisation permet la collecte locale même après un échec d’import.
+Dossiers et preuves du mode local sont stockés dans le navigateur. Après connexion, les données du compte sont sauvegardées côté serveur et les modifications en attente restent sur l’appareil jusqu’à confirmation de leur réception. L’analyse envoie l’URL au serveur ; l’actualisation locale transmet les données de localisation et de comparaison aux fonctions serveur. Les services externes reçoivent les requêtes nécessaires. Les anciens dossiers sans preuves restent lisibles mais leur score est recalculé prudemment. Changer l’adresse invalide les données locales ; changer la surface ou le type invalide les comparables. Le bouton d’actualisation permet la collecte locale même après un échec d’import.
 
 ## Limites explicites
 

@@ -2,12 +2,12 @@ import { create } from 'zustand';
 import { getUser, handleAuthCallback, onAuthChange, logout, refreshSession, type User } from '@netlify/identity';
 import { useStore } from '../store';
 import { emptyAccount, pickAccount, validAccount, type AccountData } from './accountData';
+import { accountTransport, type Envelope } from './accountTransport';
 
 type Status='loading'|'guest'|'saved'|'pending'|'saving'|'error'|'conflict';
-interface Envelope { data:AccountData; revision:string|null; updatedAt:string|null; userId?:string }
 interface Draft extends Envelope { savedLocallyAt:string }
-export const useAccount=create<{user:User|null;status:Status;ready:boolean;message:string;updatedAt:string|null;resetPassword:boolean;inviteToken:string|null;generation:number}>(()=>({user:null,status:'loading',ready:false,message:'',updatedAt:null,resetPassword:false,inviteToken:null,generation:0}));
-let revision:string|null=null,applying=false,pending:AccountData|null=null,epoch=0,timer:ReturnType<typeof setTimeout>|undefined,busy=false;
+export const useAccount=create<{user:User|null;status:Status;ready:boolean;message:string;authMessage:string;updatedAt:string|null;resetPassword:boolean;inviteToken:string|null;generation:number}>(()=>({user:null,status:'loading',ready:false,message:'',authMessage:'',updatedAt:null,resetPassword:false,inviteToken:null,generation:0}));
+let revision:string|null=null,applying=false,pending:AccountData|null=null,epoch=0,timer:ReturnType<typeof setTimeout>|undefined,busy=false,refreshing=false;
 let tabId:string;try{tabId=sessionStorage.getItem('pia-tab')||crypto.randomUUID();sessionStorage.setItem('pia-tab',tabId);}catch{tabId=crypto.randomUUID();}
 const cacheKey=(id:string)=>`pia-account-cache:${id}`;
 const draftKey=(id:string)=>`pia-account-draft:${id}:${tabId}`;
@@ -24,15 +24,7 @@ export function downloadAccount(data=pickAccount(useStore.getState())) {
  const url=URL.createObjectURL(new Blob([JSON.stringify({exportedAt:new Date().toISOString(),data},null,2)],{type:'application/json'}));
  const a=document.createElement('a');a.href=url;a.download=`patrimoine-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
-async function request(method='GET',body?:unknown):Promise<Envelope> {
- await refreshSession();
- const response=await fetch('/.netlify/functions/account',{method,credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(15000)});
- const result=await response.json().catch(()=>({error:'Le service de compte n’est pas encore disponible sur ce site.'}));
- if(!response.ok)throw Object.assign(new Error(result.error||'Service indisponible.'),{status:response.status});
- if(result.userId!==useAccount.getState().user?.id)throw Object.assign(new Error('La session a changé. Reconnectez-vous.'),{status:401});
- if(method==='GET'&&!validAccount(result.data))throw new Error('La sauvegarde reçue est invalide. Elle n’a pas été chargée.');
- return result;
-}
+const request=accountTransport(()=>({userId:useAccount.getState().user?.id??null,generation:epoch}),refreshSession);
 function storePending(data:AccountData){
  const user=useAccount.getState().user;if(!user)return;
  pending=data;
@@ -77,10 +69,11 @@ async function openAccount(user:User|null) {
 }
 export async function retryAccount(){if(!useAccount.getState().ready){const user=useAccount.getState().user;await openAccount(user);}else if(pending)await syncAccount();else await refreshAccount();}
 export async function refreshAccount(){
- if(!useAccount.getState().user||pending||busy||useStore.getState().demoMode)return;
- const run=epoch;
- try{const remote=await request();if(run!==epoch||pending)return;if(remote.revision!==revision){revision=remote.revision;hydrate(remote.data);}write(cacheKey(remote.userId!),remote);useAccount.setState({status:'saved',updatedAt:remote.updatedAt,message:''});}
+ if(!useAccount.getState().user||pending||busy||refreshing||useStore.getState().demoMode)return;
+ const run=epoch,base=revision;refreshing=true;
+ try{const remote=await request();if(run!==epoch||pending||revision!==base||useStore.getState().demoMode)return;if(remote.revision!==revision){revision=remote.revision;hydrate(remote.data);}write(cacheKey(remote.userId),remote);useAccount.setState({status:'saved',updatedAt:remote.updatedAt,message:''});}
  catch(e:any){if(run===epoch)useAccount.setState({status:'error',message:e.message||'Synchronisation indisponible.'});}
+ finally{refreshing=false;}
 }
 export async function resolveConflict(keepLocal:boolean){
  const run=epoch,local=pending;const remote=await request();if(run!==epoch)return;
@@ -116,12 +109,14 @@ export async function startAccounts(){
  });
  let booting=true;
  onAuthChange((event,user)=>{if(booting||event==='token_refresh'||event==='user_updated')return;if(event==='recovery')useAccount.setState({resetPassword:true});void openAccount(user);});
- try{const callback=await handleAuthCallback();if(callback?.type==='recovery')useAccount.setState({resetPassword:true});if(callback?.type==='invite')useAccount.setState({inviteToken:callback.token??null});}
- catch{useAccount.setState({message:'Ce lien de connexion est invalide ou expiré. Demandez un nouveau lien.'});}
+ try{const callback=await handleAuthCallback();if(callback?.type==='confirmation')useAccount.setState({authMessage:'Votre adresse e-mail est confirmée. Bienvenue dans votre espace personnel.'});if(callback?.type==='recovery')useAccount.setState({resetPassword:true});if(callback?.type==='invite')useAccount.setState({inviteToken:callback.token??null});}
+ catch{useAccount.setState({authMessage:'Ce lien de connexion est invalide ou expiré. Demandez un nouveau lien depuis Mon compte.'});history.replaceState(history.state,'',location.pathname+location.search);}
  booting=false;await openAccount(await getUser());
  addEventListener('online',()=>{if(pending||!useAccount.getState().ready)void retryAccount();});
+ addEventListener('focus',()=>{if(useAccount.getState().user)void retryAccount();});
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&useAccount.getState().user)void retryAccount();});
  addEventListener('beforeunload',e=>{if(pending){e.preventDefault();e.returnValue='';}});
  // Identity's in-memory session is not cross-tab reactive. Reload on another tab's auth change.
  addEventListener('storage',e=>{if(e.key==='gotrue.user'){window.location.reload();}});
- setInterval(()=>{if(document.visibilityState==='visible'&&pending)void syncAccount();},30000);
+ setInterval(()=>{if(document.visibilityState==='visible'&&useAccount.getState().user)void retryAccount();},30000);
 }

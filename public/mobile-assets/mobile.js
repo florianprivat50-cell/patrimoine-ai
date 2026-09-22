@@ -22,7 +22,7 @@ function localReady(p){const x=p.localScenario;return !!(x&&x.locationKey===loca
 function evaluated(p){return resultMode==='local'&&localReady(p)?{...p,monthlyRent:Number(p.localScenario.rent),commercial:0,vacancy:Number(p.localScenario.vacancy)}:p;}
 function toast(text){clearTimeout(toastTimer);$('#toast').textContent=text;$('#toast').hidden=false;toastTimer=setTimeout(()=>$('#toast').hidden=true,5500);}
 function showDialog(id){activeTrigger=document.activeElement;$('#'+id).showModal();}
-function closeDialog(id){$('#'+id).close();if(id==='editor'){requestSequence++;editing=null;}if(activeTrigger?.isConnected)activeTrigger.focus();}
+function closeDialog(id){$('#'+id).close();if(id==='editor'){requestSequence++;editing=null;}if(id==='comparison-dialog')backend?.clearComparison();if(activeTrigger?.isConnected)activeTrigger.focus();}
 function label(){if(mode==='demo')return 'Démonstration · rien n’est envoyé au compte';if(!auth.user)return auth.status==='loading'?'Initialisation…':'Connectez-vous pour conserver vos dossiers';return ({loading:'Chargement du compte…',saved:'Sauvegardé dans mon compte',saving:'Sauvegarde en cours…',pending:'Sauvegarde en attente',conflict:'Deux versions à départager',error:'Sauvegarde non confirmée'})[auth.status]||'Sauvegarde en attente';}
 function renderAccount(){
  const text=label();$('#sync-label').textContent=text;$('.local-tag').textContent=text;$('#sync-line').classList.toggle('sync-error',['error','conflict'].includes(auth.status));
@@ -48,6 +48,7 @@ function render(){
  $('#cards').innerHTML=list.map((p,i)=>{const valid=usable(p)&&!p.mobileDraft,m=valid?calculate(p):null;return '<article class="property-card"><div class="card-art art-'+(i%3+1)+'"><span class="card-tag">'+esc(p.propertyType)+(mode==='demo'?' · Fictif':'')+'</span><svg class="scene" aria-hidden="true"><use href="#architecture"/></svg><button class="favorite" data-favorite="'+esc(p.id)+'" aria-pressed="'+!!p.favorite+'" aria-label="Favori : '+esc(p.name)+'">'+icon('heart')+'</button></div><div class="card-body"><div class="card-city">'+icon('pin')+esc(p.city||'Lieu à renseigner')+'</div><h3 class="card-title">'+esc(p.name||'Brouillon sans titre')+'</h3><p class="card-meta">'+(p.surface?dec(p.surface)+' m² · ':'')+euro(Number(p.price))+' à l’achat</p><div class="card-numbers"><div><small>Cash-flow avant impôt</small><strong class="'+(m?(m.cashflow>=0?'positive':'negative'):'draft-label')+'">'+(m?signed(m.cashflow):'À compléter')+(m?'<em> /mois</em>':'')+'</strong></div><div><small>Rendement brut</small><strong>'+(m?dec(m.grossYield)+' <em>%</em>':'—')+'</strong></div></div></div><div class="card-footer"><span>'+(mode==='demo'?'Fictif · non enregistré':valid?'Dossier personnel':'Brouillon personnel')+'</span><button data-open="'+esc(p.id)+'">'+(valid?'Voir l’analyse':'Reprendre')+' '+icon('arrow')+'</button></div></article>';}).join('');
  if(!list.length)$('#cards').innerHTML='<div class="empty">'+icon('building')+'<h3>'+(query||favoritesOnly?'Aucun dossier correspondant.':'Votre premier projet commence ici.')+'</h3><p>Un bien, son financement et des références locales pour comparer vos hypothèses.</p><button class="primary" data-action="'+(query||favoritesOnly?'clear':'new')+'">'+(query||favoritesOnly?'Réinitialiser les filtres':'Analyser un bien')+icon('arrow')+'</button></div>';
  renderAccount();
+ if($('#comparison-dialog').open)backend.compare(mode==='demo'?demos:auth.projects,mode==='demo');
 }
 function setAuthMode(value){
  authMode=value;$('#auth-tabs').hidden=value==='reset';$('#email-field').hidden=value==='reset';$('#password-field').hidden=value==='forgot';
@@ -60,7 +61,7 @@ function setAuthMode(value){
 function handleState(next){
  const switched=auth.user?.id!==next.user?.id||auth.generation!==next.generation;
  auth=next;
- if(switched){if($('#editor').open)closeDialog('editor');if($('#account-dialog').open)closeDialog('account-dialog');editing=null;mode='mine';favoritesOnly=false;$('#search').value='';}
+ if(switched){if($('#comparison-dialog').open)closeDialog('comparison-dialog');backend?.clearComparison();if($('#editor').open)closeDialog('editor');if($('#account-dialog').open)closeDialog('account-dialog');editing=null;mode='mine';favoritesOnly=false;$('#search').value='';}
  if(next.resetPassword||next.invite){mode='mine';setAuthMode('reset');}
  render();
 }
@@ -116,7 +117,13 @@ function renderRobustness(m){
  const status=m.cashflow<0?'Un effort mensuel est nécessaire.':m.stressCashflow<0?'La marge disparaît dans le scénario dégradé.':'La trésorerie reste positive dans ce scénario dégradé.';
  box.innerHTML='<h3>La marge résiste-t-elle ?</h3><p>'+esc(status)+'</p><div class="ledger"><div><span>Scénario dégradé · avant impôt</span><strong>'+esc(signed(m.stressCashflow))+'/mois</strong></div><div><span>Loyers totaux HC nécessaires à l’équilibre</span><strong>'+esc(m.breakEvenRent===null?'Équilibre impossible':euro(m.breakEvenRent)+'/mois')+'</strong></div></div><p class="hint">Scénario dégradé : loyers −5 %, vacance +5 points (plafond 100 %, soit '+esc(dec(m.stressVacancy))+' %), travaux +15 %, charges mensuelles +10 %. Même apport ; surcoût des travaux financé. Ce test ne prédit pas le marché.</p><p class="hint">Le loyer d’équilibre utilise vos hypothèses de départ, avant impôt, pour l’ensemble des logements et locaux.</p><details class="assumptions"><summary>Hypothèses à vérifier</summary><ul>'+m.checks.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></details>';
 }
-function renderNumbers(){if(!editing)return;const p=readForm();if(!usable(p)){$('#cashflow').textContent='À recalculer';for(const id of ['yield','net-yield','total-cost','monthly-payment'])$('#'+id).textContent='—';$('#ledger').innerHTML='';$('#analysis-robustness')?.remove();$('#analysis-feasibility')?.remove();$('#scenario-output').textContent='Corrigez les données du projet pour recalculer.';return;}if(resultMode==='local'&&!localReady(p))resultMode='declared';const q=evaluated(p),m=calculate(q);renderRobustness(m);
+function renderDecision(p){
+ const d=backend.decision(p);let box=$('#rental-decision');if(!box){box=document.createElement('section');box.id='rental-decision';box.className='rental-summary';$('#result-basis').after(box);}
+ if(!d.calculable){box.innerHTML='<h3>À compléter avant de comparer</h3><ul>'+d.issues.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>';return;}
+ const target=d.result.monthlyCashflow>=0?'L’équilibre avant impôt est déjà atteint au prix demandé.':d.targetPrice===null?'Une baisse du prix seule ne permet pas d’atteindre l’équilibre avec ces hypothèses.':'Prix maximal calculé pour un équilibre avant impôt : '+euro(d.targetPrice)+'.';
+ box.innerHTML='<h3>'+esc(d.status)+'</h3><p>'+esc(d.next)+'</p><p><strong>'+esc(target)+'</strong></p><p>Ce seuil n’est pas une estimation de marché. Même apport et mêmes hypothèses ; impôt sur les revenus locatifs exclu.</p><details><summary>Ce qui manque pour décider · '+d.gaps.length+' point(s)</summary><ul>'+d.gaps.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul><p>Les références ne remplacent pas les documents du bien.</p></details><details><summary>Préparer ma visite</summary><ul>'+d.visitQuestions.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></details>';
+}
+function renderNumbers(){if(!editing)return;const p=readForm();if(!usable(p)){$('#cashflow').textContent='À recalculer';for(const id of ['yield','net-yield','total-cost','monthly-payment'])$('#'+id).textContent='—';$('#ledger').innerHTML='';$('#analysis-robustness')?.remove();$('#analysis-feasibility')?.remove();$('#rental-decision')?.remove();$('#scenario-output').textContent='Corrigez les données du projet pour recalculer.';return;}if(resultMode==='local'&&!localReady(p))resultMode='declared';const q=evaluated(p),m=calculate(q);renderRobustness(m);renderDecision(q);
  $('#result-title').textContent=p.name;$('#result-subtitle').textContent=[p.city,p.propertyType,dec(p.surface)+' m²'].join(' · ')+(mode==='demo'?' · Fictif':'');
  $$('[data-result-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.resultMode===resultMode)));
  $('#result-basis').textContent=resultMode==='local'?'Scénario local selon votre référence du '+p.localScenario.date+' ; source déclarée, non vérifiée automatiquement.':'Selon vos loyers et votre vacance renseignés. Aucun ajustement local automatique.';
@@ -136,7 +143,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
  if(b.dataset.open){openProject(b.dataset.open);return;}if(b.dataset.back){showStep(Number(b.dataset.back));return;}
  if(b.dataset.resultMode){if(b.dataset.resultMode==='local'&&!localReady(readForm())){$('#local-scenario-panel').open=true;$('#local-scenario-panel').scrollIntoView({block:'center'});toast('Documentez d’abord les loyers locaux et la vacance retenue.');return;}resultMode=b.dataset.resultMode;renderNumbers();return;}
  if(b.dataset.favorite){const list=mode==='demo'?demos:auth.projects,p=list.find(x=>x.id===b.dataset.favorite);if(p){const next={...p,favorite:!p.favorite};if(mode==='demo'){demos=demos.map(x=>x.id===p.id?next:x);render();}else try{backend.save(next);}catch(e){toast(e.message);}}return;}
- const a=b.dataset.action;if(a==='new')startNew();if(a==='help')showDialog('help');if(a==='account')accountOpen();
+ const a=b.dataset.action;if(a==='compare'){try{backend.compare(mode==='demo'?demos:auth.projects,mode==='demo');showDialog('comparison-dialog');}catch(error){toast(error.message);}return;}if(a==='new')startNew();if(a==='help')showDialog('help');if(a==='account')accountOpen();
  if(a==='favorites'){favoritesOnly=!favoritesOnly;render();}if(a==='all'){favoritesOnly=false;render();}if(a==='clear'){favoritesOnly=false;$('#search').value='';render();}if(a==='sort'){sort=sort==='recent'?'cashflow':'recent';render();}
 });
 $('#auth-form').addEventListener('submit',async e=>{e.preventDefault();if(!backend)return;authBusy=true;renderAccount();$('#auth-error').hidden=true;$('#auth-feedback').textContent='';const email=$('#auth-email').value.trim(),password=$('#auth-password').value;
@@ -150,6 +157,7 @@ $('#next').addEventListener('click',()=>{if(validate(1)){stash();showStep(2);}})
 $('#project-form').addEventListener('submit',e=>{e.preventDefault();if(step===1){if(validate(1)){stash();showStep(2);}}else if(step===2&&validate(2)){stash();showResult();}});
 $('#project-form').addEventListener('input',e=>{if(!editing||e.target.id==='price-slider')return;stash(e.target.name);updateAssumptions();if(step===3)renderNumbers();});
 $('#project-form').addEventListener('change',e=>{if(!editing)return;stash(e.target.name);if(step===3)renderNumbers();});
+$('#comparison-dialog').addEventListener('close',()=>backend?.clearComparison());
 $('#editor').addEventListener('cancel',()=>{requestSequence++;editing=null;});
 $('#collect-local').addEventListener('click',collectLocal);$('#save').addEventListener('click',save);$('#price-slider').addEventListener('input',scenario);$('#search').addEventListener('input',render);
 $('#sync-account').addEventListener('click',()=>accountAction(()=>backend.retry()));$('#export-account').addEventListener('click',()=>backend.export());

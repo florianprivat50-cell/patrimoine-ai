@@ -1,7 +1,11 @@
 /** Mobile UI adapter: reuses the existing account store and financial engine.
  * No additional password store or private-data collection is created here.
  */
-import { login, signup, requestPasswordRecovery, updateUser, acceptInvite } from '@netlify/identity';
+import { login, signup, requestPasswordRecovery, updateUser, acceptInvite, getSettings } from '@netlify/identity';
+import { createElement } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import RentalComparison from '../components/RentalComparison';
+import { rentalDecision } from '../lib/rentalDecision';
 import { useStore } from '../store';
 import { useAccount, startAccounts, syncAccount, retryAccount, signOut, resolveConflict, downloadAccount } from '../lib/account';
 import { mobileAnalysis } from '../lib/mobileAnalysis';
@@ -44,14 +48,22 @@ function calculate(p:UI) {
 function state(){
   const a=useAccount.getState();
   return {user:a.user?{id:a.user.id,email:a.user.email,name:a.user.name}:null,status:a.status,ready:a.ready,
-    message:a.message,updatedAt:a.updatedAt,resetPassword:a.resetPassword,invite:!!a.inviteToken,
+    message:a.message||a.authMessage,updatedAt:a.updatedAt,resetPassword:a.resetPassword,invite:!!a.inviteToken,
     generation:a.generation,projects:a.user&&a.ready?useStore.getState().projects.map(toUI):[]};
 }
 function emit(){window.dispatchEvent(new CustomEvent('pia:state',{detail:state()}));}
+let comparisonRoot:Root|null=null;
 const api={
   state,calculate,
+  decision:(p:UI)=>rentalDecision(toProject(p)),
+  compare:(projects:UI[],demo:boolean)=>{
+    if(!demo&&(!useAccount.getState().user||!useAccount.getState().ready))throw new Error('Connectez-vous pour comparer vos dossiers.');
+    comparisonRoot??=createRoot(document.getElementById('comparison-content')!);
+    comparisonRoot.render(createElement(RentalComparison,{projects:projects.map(toProject),demo}));
+  },
+  clearComparison:()=>{comparisonRoot?.unmount();comparisonRoot=null;},
   login:async(email:string,password:string)=>{await login(email.trim(),password);},
-  signup:async(email:string,password:string)=>{const u=await signup(email.trim(),password);return {confirmed:!!u.confirmedAt};},
+  signup:async(email:string,password:string)=>{const settings=await getSettings();if(settings.disableSignup||settings.autoconfirm)throw new Error('L’inscription avec confirmation e-mail est momentanément indisponible.');const u=await signup(email.trim(),password);return {confirmed:!!u.confirmedAt};},
   recover:async(email:string)=>{await requestPasswordRecovery(email.trim());},
   reset:async(password:string)=>{const a=useAccount.getState();if(a.inviteToken)await acceptInvite(a.inviteToken,password);else await updateUser({password});useAccount.setState({resetPassword:false,inviteToken:null});},
   logout:signOut,
