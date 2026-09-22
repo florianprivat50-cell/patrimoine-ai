@@ -5,14 +5,17 @@ export interface AccountRepository {
   getWithMetadata(key:string, options:{type:'json'}):Promise<{data:any;etag?:string}|null>;
   setJSON(key:string, data:unknown, options:{onlyIfNew:true}|{onlyIfMatch:string}):Promise<{modified:boolean;etag?:string}>;
 }
-export function accountHandler(authenticate:()=>Promise<{id:string}|null>, repository:()=>AccountRepository) {
+export function accountHandler(authenticate:()=>Promise<{id:string;confirmedAt?:string}|null>, repository:()=>AccountRepository) {
  return async (req:Request):Promise<Response> => {
-  const reply=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'private, no-store','Netlify-CDN-Cache-Control':'no-store','Vary':'Cookie'}});
+  const reply=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'private, no-store','Netlify-CDN-Cache-Control':'no-store','Vary':'Cookie, X-Account-Id','X-Content-Type-Options':'nosniff'}});
   try {
    if(!['GET','PUT'].includes(req.method))return reply({error:'Méthode non autorisée.'},405);
    if(req.method==='PUT' && req.headers.get('origin')!==new URL(req.url).origin)return reply({error:'Origine non autorisée.'},403);
    const user=await authenticate();
    if(!user || !/^[a-zA-Z0-9_-]{1,200}$/.test(user.id))return reply({error:'Reconnectez-vous à votre compte.'},401);
+   if(!user.confirmedAt)return reply({error:'Confirmez votre adresse e-mail avant d’accéder à votre espace.'},403);
+   // This header is a session-race guard, never a source of authorization or a storage key.
+   if(req.headers.get('x-account-id')!==user.id)return reply({error:'La session a changé. Reconnectez-vous à votre compte.'},401);
    const store=repository(),key=`users/${user.id}/workspace-v1`;
    if(req.method==='GET') {
     const record=await store.getWithMetadata(key,{type:'json'});
