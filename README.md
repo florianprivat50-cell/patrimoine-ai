@@ -2,6 +2,12 @@
 
 L’accueil analyse une annonce, conserve les preuves avec le dossier et partage le même score avec Mes analyses et l’assistant. Identité : bleu nuit/noir, or champagne, Playfair Display et DM Sans.
 
+## État des comptes — 22 septembre 2026
+
+Cette branche contient l’accès personnel par e-mail/mot de passe et la sauvegarde privée avec Netlify Identity et Blobs. `main` décrit encore le MVP local historique. Les changements de compte sont livrés séparément de la PR visuelle #1.
+
+Sur le site `gregarious-moonbeam-d9e5b6`, Identity répond avec inscriptions ouvertes et confirmation e-mail obligatoire. Le code servi en production diffère de cette branche ; l’endpoint `/.netlify/functions/account` attendu ici y renvoie actuellement du HTML. L’activation d’Identity seule ne prouve donc pas le déploiement de cette implémentation ni la synchronisation de ses données. Voir [le diagnostic et les vérifications](docs/accounts.md).
+
 ## Développement et vérification
 
 Node **24+** est nécessaire pour le lanceur de tests.
@@ -47,7 +53,7 @@ L’assistant immobilier utilise des **calculs déterministes**, sans LLM ni cl�
 
 Le prix cible est recherché entre 1 € et le prix actuel, à hypothèses et qualité des preuves constantes. Il ne promet pas de franchir un plafond de preuve par une simple négociation. Les simulations ne constituent pas des offres envoyées.
 
-Dossiers et preuves sont stockés dans le navigateur (Zustand/localStorage). L’analyse envoie l’URL au serveur ; l’actualisation locale transmet les données de localisation et de comparaison aux fonctions serveur. Les services externes reçoivent les requêtes nécessaires. Les anciens dossiers sans preuves restent lisibles mais leur score est recalculé prudemment. Changer l’adresse invalide les données locales ; changer la surface ou le type invalide les comparables. Le bouton d’actualisation permet la collecte locale même après un échec d’import.
+Dossiers et preuves du mode local sont stockés dans le navigateur. Après connexion, les données du compte sont sauvegardées côté serveur et les modifications en attente restent sur l’appareil jusqu’à confirmation de leur réception. L’analyse envoie l’URL au serveur ; l’actualisation locale transmet les données de localisation et de comparaison aux fonctions serveur. Les services externes reçoivent les requêtes nécessaires. Les anciens dossiers sans preuves restent lisibles mais leur score est recalculé prudemment. Changer l’adresse invalide les données locales ; changer la surface ou le type invalide les comparables. Le bouton d’actualisation permet la collecte locale même après un échec d’import.
 
 ## Limites explicites
 
